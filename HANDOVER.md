@@ -1,0 +1,130 @@
+# BAS-More/skills — Active Codex handover
+
+**Status:** ACTIVE
+**Updated:** 2026-08-26 (Australia/Melbourne)
+**Default branch:** `main`
+**Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
+**Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
+
+## Evidence boundary
+
+The Codex thread transcript is not available through this GitHub checkout or the connected repository API. This handover is reconstructed from the current repository, the retained benchmark handover under `docs/mcp-routing-benchmark/`, branches, commits, and PR history. Any thread-local change that was never committed is **not recovered** by this document.
+
+## Executive state
+
+The repository-level skill organization is established and governed by the existing project rules. The most important unfinished work is not ordinary skill curation: it is the routing evaluation documented in:
+
+- `docs/mcp-routing-benchmark/HANDOVER.md`
+- `docs/mcp-routing-benchmark/HANDOVER-PROMPT.md`
+- `docs/mcp-tool-routing-layer-validation.md`
+
+The research and lexical baselines were completed. The semantic benchmark was not completed because the cloud environment denied access to `huggingface.co`, which prevented the embedding model from being obtained. The retained handover records the measured conclusion that lexical routing does not scale to the real catalogue: on the 412-tool catalogue it reached roughly 21–23% top-1, and real descriptions did not remove that ceiling. The remaining question is whether a genuine semantic backend materially improves the result.
+
+The repository also retains the branch `claude/mcp-tool-calling-layer-9g9q8j`. Do not assume its name means it is the current source of truth. Compare it by content against `main` before reusing or deleting it.
+
+## Completed and preserved
+
+- A real-catalogue routing study and lexical/control baselines exist.
+- The benchmark documents record two scorer/harness defects that once produced near-zero results and were corrected:
+  - missing workload-prefix normalization;
+  - a parser that failed on newline-delimited JSON.
+- The research records a critical diagnostic rule: when a gateway scores near zero, validate the scorer before blaming the gateway.
+- A control path is specified: semantic BGE and non-semantic hash runs must be executed together so any gain is attributable to semantics rather than hybrid plumbing.
+- Repository skill buckets and publication rules remain governed by `CLAUDE-PROJECT-RULES.md`.
+
+## Unfinished work, in priority order
+
+### P0 — recover the exact execution environment
+
+1. From a clean clone, record:
+   ```bash
+   git status --short
+   git branch --show-current
+   git log --oneline -5
+   git remote -v
+   gh pr list --state open
+   ```
+2. Compare `claude/mcp-tool-calling-layer-9g9q8j` with `main` by content:
+   ```bash
+   git fetch --all --prune
+   git diff --stat origin/main...origin/claude/mcp-tool-calling-layer-9g9q8j
+   git log --left-right --cherry-pick --oneline origin/main...origin/claude/mcp-tool-calling-layer-9g9q8j
+   ```
+3. Preserve any unique work before branch cleanup. A merged PR status is not enough; verify files and commits.
+
+### P1 — clear or accurately report the semantic-model blocker
+
+The existing benchmark handover says the cloud egress proxy denied `huggingface.co`. At the start of a new session, test the blocker once using the documented bootstrap path. Do not repeatedly retry, tunnel around policy, change download hosts without review, or label a policy denial as a product failure.
+
+If the denial remains, set this handover to `BLOCKED` and record the exact command, exit status, and denial message. The user must change the cloud environment policy in the UI; a running session cannot retroactively acquire that permission.
+
+### P2 — run the semantic and control evaluations together
+
+Once the embedding model is genuinely available, run from the benchmark directory using the retained commands:
+
+```bash
+THV=/tmp/thv EMBED_PYTHON=/tmp/embvenv/bin/python ./run-semantic.sh bge tokens
+THV=/tmp/thv EMBED_PYTHON=/tmp/embvenv/bin/python ./run-semantic.sh hash tokens
+```
+
+For each run, record:
+
+- backend and model;
+- exact commit and configuration;
+- top-1 and any other agreed metrics;
+- empty-result rate;
+- embedding request count;
+- tool-surface overhead;
+- errors and exclusions.
+
+A semantic run with **zero embedding requests is invalid**, regardless of its score.
+
+### P3 — interpret without tuning to the answer
+
+Do not tune the query set, labels, catalogue, or `hybridSearchSemanticRatio` to make semantic search look better. Report disappointing numbers plainly. The decision is whether semantics beats the measured lexical ceiling under a fixed protocol, not whether the benchmark can be optimized after observing the result.
+
+### P4 — close the research loop in the repository
+
+Update `docs/mcp-tool-routing-layer-validation.md` with:
+
+- the exact two-run comparison;
+- whether semantic routing materially beats lexical;
+- operational costs and failure modes;
+- recommendation: ship, reject, or run a named follow-up;
+- reproducible commands and environment details.
+
+Then update the benchmark handover and this root handover. If no engineering work remains, change `Status:` to `COMPLETE`.
+
+## Validation and repository rules
+
+Before committing skill changes, verify the repository publication invariants:
+
+- every skill in `engineering/`, `productivity/`, or `misc/` is linked from the top-level `README.md`;
+- every promoted skill appears in `.claude-plugin/plugin.json`;
+- `personal/`, `in-progress/`, and `deprecated/` skills do not appear in those public indexes;
+- each bucket README lists each skill with a link to its `SKILL.md`.
+
+Run the benchmark-specific checks documented beside the scripts. Do not use a generic green exit as proof that embeddings were exercised.
+
+## Traps already paid for
+
+- `pkill -f <pattern>` can kill the shell running it.
+- A network policy change is normally read at session start; changing policy does not repair an already-running cloud session.
+- Marketing claims are not implementation evidence.
+- Counts alone are weak: two configurations can expose the same number of tools while exposing different server names.
+- Do not commit model caches, tokens, credentials, virtual environments, or generated benchmark bulk unless the repository explicitly tracks them.
+
+## Definition of done
+
+This handover may be marked `COMPLETE` only when:
+
+1. unique branch/thread work is either merged, intentionally archived, or explicitly declared unrecoverable;
+2. the semantic backend ran and made non-zero embedding requests, or the owner formally closes the experiment without it;
+3. semantic and hash controls were run under the same fixed protocol;
+4. results and recommendation are committed to the validation document;
+5. repository indexes and plugin manifest are consistent;
+6. the final commit and PR are pushed and all required checks are green or their limitations are explicitly accepted.
+
+## Handover maintenance
+
+On every meaningful session stop, update this file and `HANDOVER-PROMPT.md` in the same commit. Keep the detailed benchmark handover for experiment-specific commands, but make this root file the single active status index.
