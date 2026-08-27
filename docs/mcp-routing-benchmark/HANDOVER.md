@@ -38,12 +38,18 @@ All merged to `main` via PRs #1, #3, #4, #5, #7.
 only for what it does *not* do: running, authenticating, isolating and governing
 MCP servers.
 
-**Scale destroys lexical routing.** Measured on the real catalogue:
+**Scale destroys lexical routing.** Measured on the real catalogue (top-1 falls
+from 69-81% on a 16-tool toy to 21-28%):
 
 | Catalogue | ToolHive | MCPProxy | Nexus |
 |---|---|---|---|
 | 16-tool toy, top-1 | 81% | 69% | 69% |
-| **412 real tools, top-1** | **21%** | **21%** | **23%** |
+| **412 real tools, top-1** | 21% | 26% | **28%** |
+| **412 real tools, top-3** | **44%** | 37% | 37% |
+| **412 real tools, empty** | **1/43** | 8/43 | 6/43 |
+
+(MCPProxy and Nexus figures corrected 2026-08-24 after a scorer audit — see
+"Scorer audit" in the validation doc. ToolHive unchanged.)
 
 Any decision taken from a small demo overstates these layers by 3-4x.
 
@@ -61,10 +67,13 @@ catalogue with descriptions — it was tested and it does not change the ranking
   on the tool-name field. ToolHive and Nexus tokenise names and are unaffected.
 - **Tool-surface overhead.** ToolHive and Nexus expose 2 tools; MCPProxy exposes 12.
 
-**Recommendation:** ToolHive vMCP if you want a self-hosted router (best top-3,
-near-zero empty rate, hybrid search, 86-100% coverage on the routing path), at the
-cost of a heavy config and an optimizer its own docs mark Experimental. MCPProxy if
-you want a single local binary and have good descriptions everywhere.
+**Recommendation:** ToolHive vMCP if you want a self-hosted router — best top-3
+(44% vs 37%), near-zero empty rate (1/43), hybrid search, 86-100% coverage on the
+routing path — at the cost of a heavy config and an optimizer its own docs mark
+Experimental. MCPProxy if you want a single local binary and have good descriptions
+everywhere; it leads on top-1 (26% vs 21%) but returns nothing 8 times in 43.
+Nexus scores best of all on top-1 (28%) and is still not recommendable: no release
+since September 2025. The best-scoring lexical engine here is the unmaintained one.
 
 ---
 

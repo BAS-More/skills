@@ -4,6 +4,7 @@
 Usage: realbench.py <label> <url> <tool> <arg> [keywords|text] [extra-json]
 """
 import json
+import re
 import sys
 import time
 
@@ -17,16 +18,28 @@ STOP = {"the", "a", "an", "of", "to", "for", "in", "on", "we", "us", "our", "the
         "over", "one", "same", "while", "so", "up", "out", "about", "into", "can"}
 
 
-def strip_prefix(name):
-    base = name.split(":")[-1]
-    for sep in ("__", "/"):
-        if sep in base:
-            base = base.split(sep)[-1]
+def split_name(name):
+    """Split a gateway's tool name into (server_or_None, tool).
+
+    Gateways qualify names three different ways: "Server:tool" (MCPProxy),
+    "Server__tool" (Nexus) and "Server_tool" (vMCP's {workload}_ prefix). Strip
+    exactly ONE qualifier: several servers here own tools that already begin with
+    the server's own name (every ClickUp tool is clickup_*), so stripping a
+    separator AND an underscore prefix mangles the tool name.
+    """
+    for sep in (":", "__", "/"):
+        if sep in name:
+            left, _, right = name.rpartition(sep)
+            return (left or None), right
     for s in SERVERS:
         for cand in (s + "_", s.lower() + "_", s.replace("_", "") + "_"):
-            if base.startswith(cand):
-                return base[len(cand):]
-    return base
+            if name.startswith(cand):
+                return s, name[len(cand):]
+    return None, name
+
+
+def norm_server(s):
+    return re.sub(r"[^a-z0-9]", "", s.lower()) if s else s
 
 
 def parse_payloads(text):
@@ -53,6 +66,7 @@ def parse_payloads(text):
 
 
 def names_in(text):
+    """Ranked (server, tool) entries, in the order the gateway returned them."""
     found = []
     for data in parse_payloads(text):
         stack = [data]
@@ -68,10 +82,37 @@ def names_in(text):
                 stack.extend(cur)
     out = []
     for f in found:
-        b = strip_prefix(f)
-        if b not in out:
-            out.append(b)
+        e = split_name(f)
+        if e not in out:
+            out.append(e)
     return out
+
+
+def rank_of(ranked, exp_server, exp_tool):
+    """1-based rank of the expected tool, or 0.
+
+    The server must match when the gateway reported one: ten tool names in this
+    catalogue exist on more than one server (list_projects, search_issues, ...),
+    so scoring on the bare tool name would credit the wrong backend.
+    """
+    for i, (srv, tool) in enumerate(ranked, 1):
+        if tool == exp_tool and (srv is None
+                                 or norm_server(srv) == norm_server(exp_server)):
+            return i
+    return 0
+
+
+def result_status(res):
+    """'error' for a JSON-RPC error or isError result, else 'ok'.
+
+    Without this a protocol error is indistinguishable from a genuine no-match
+    and silently inflates the empty-result metric.
+    """
+    if isinstance(res, dict) and res.get("error"):
+        return "error"
+    if isinstance((res or {}).get("result"), dict) and res["result"].get("isError"):
+        return "error"
+    return "ok"
 
 
 def main():
@@ -82,7 +123,7 @@ def main():
     c = MCPHTTP(url)
     c.init()
     t1 = t3 = t5 = 0
-    empty = 0
+    empty = errors = 0
     lat = []
     rows = []
     for q, server, expected in QUERIES:
@@ -92,17 +133,23 @@ def main():
         try:
             res = c.call("tools/call", {"name": tool, "arguments": {arg: val, **extra}})
         except Exception as e:
-            rows.append((q, expected, 0, [f"ERROR {e}"]))
+            errors += 1
+            rows.append((q, expected, 0, [f"TRANSPORT-ERROR {e}"]))
             continue
         lat.append(time.time() - t0)
-        ranked = [r for r in names_in(extract_text(res)) if r not in (tool, "search", "execute")]
+        if result_status(res) == "error":
+            errors += 1
+            rows.append((q, expected, 0, ["TOOL-ERROR"]))
+            continue
+        ranked = [e for e in names_in(extract_text(res))
+                  if e[1] not in (tool, "search", "execute")]
         if not ranked:
             empty += 1
-        pos = ranked.index(expected) + 1 if expected in ranked else 0
+        pos = rank_of(ranked, server, expected)
         t1 += pos == 1
         t3 += 1 <= pos <= 3
         t5 += 1 <= pos <= 5
-        rows.append((q, expected, pos, ranked[:5]))
+        rows.append((q, expected, pos, [t for _, t in ranked[:5]]))
 
     n = len(QUERIES)
     print(f"\n===== {label} — {sum(len(v) for v in CATALOGUE.values())} tools / "
@@ -114,7 +161,8 @@ def main():
     print("-" * 150)
     med = sorted(lat)[len(lat) // 2] * 1000 if lat else -1
     print(f"{label}: top-1 {t1}/{n} ({100*t1/n:.0f}%)  top-3 {t3}/{n} ({100*t3/n:.0f}%)  "
-          f"top-5 {t5}/{n} ({100*t5/n:.0f}%)  empty-results {empty}/{n}  median {med:.0f}ms")
+          f"top-5 {t5}/{n} ({100*t5/n:.0f}%)  empty-results {empty}/{n}  "
+          f"errors {errors}/{n}  median {med:.0f}ms")
 
 
 if __name__ == "__main__":

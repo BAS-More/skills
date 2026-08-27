@@ -210,26 +210,32 @@ above condition B.
 
 | Gateway | A: top-1 | A: top-3 | A: empty | B: top-1 | B: top-3 | B: top-5 | B: empty | Median |
 |---|---|---|---|---|---|---|---|---|
-| **ToolHive vMCP** | **21%** | **42%** | **1/43** | 21% | **44%** | **49%** | **1/43** | 3 ms |
-| **MCPProxy** | 2% | 2% | 34/43 | 21% | 30% | 37% | 8/43 | 5 ms |
-| **Nexus** | **23%** | 30% | 6/43 | **23%** | 30% | 33% | 6/43 | 6 ms |
+| **ToolHive vMCP** | 21% | **42%** | **1/43** | 21% | **44%** | **49%** | **1/43** | 3 ms |
+| **MCPProxy** | 2% | 2% | 34/43 | 26% | 37% | 44% | 8/43 | 7 ms |
+| **Nexus** | **28%** | 37% | 6/43 | **28%** | 37% | 40% | 6/43 | 7 ms |
+
+> **These numbers were corrected on 2026-08-24.** An audit found the scorer
+> over-stripped tool-name prefixes, making 5 of 43 queries unscoreable for
+> MCPProxy and Nexus. See [§ Scorer audit](#scorer-audit-2026-08-24). ToolHive was
+> never affected; MCPProxy and Nexus were understated by 5-7 points.
 
 ### Scale is the story
 
-Top-1 fell from **69–81% at 16 tools to 21–23% at 412** — the same engines, the
-same query style. Every lexical engine converges on roughly one-in-five once the
-catalogue is realistic. This is the single most important number in this report:
+Top-1 fell from **69–81% at 16 tools to 21–28% at 412** — the same engines, the
+same query style. Every lexical engine lands between one-in-five and one-in-four
+once the catalogue is realistic. This is the single most important number in this report:
 **lexical tool search does not survive a real catalogue.** Any decision made on
 16-tool demos, including the earlier run in this document, overstates what these
 layers will do for you.
 
-Top-3 is where they still differ, and it matters because the model gets to choose
-from what comes back: ToolHive returns the right tool in the top 3 on **44%** of
-queries versus 30% for both others.
+The engines separate differently depending on which number you care about.
+**Nexus leads top-1 (28%)** and MCPProxy follows (26%), but **ToolHive leads top-3
+(44% vs 37%)** — and top-3 is arguably the number that matters, because the model
+chooses from what comes back rather than blindly taking the first hit.
 
 ### MCPProxy collapses without descriptions
 
-MCPProxy went from **2% top-1 with 34/43 empty responses** to 21% with 8 empty
+MCPProxy went from **2% top-1 with 34/43 empty responses** to 26% with 8 empty
 purely by tokenising names into the description field. Its Bleve mapping applies
 a **keyword analyser** to `tool_name`/`full_tool_name` (exact match only), so a
 query like "show me the pull requests waiting on me" cannot reach
@@ -268,8 +274,9 @@ The five Supabase queries, rank of the correct tool:
 | change the schema safely | MISS → MISS | MISS → MISS | MISS → MISS |
 | make typescript types from the schema | 1 → 1 | 1 → 1 | 1 → 1 |
 
-Across the full 43 queries the net effect was noise: vMCP 21% → 19%, MCPProxy
-21% → 23%, Nexus 23% → 23% top-1.
+Across the full 43 queries the net effect was small: vMCP 21% → 19%, MCPProxy
+26% → 28%, Nexus 28% → 28% top-1. Notably ToolHive's empty-result count fell to
+**0/43** with real prose, and MCPProxy's to 6.
 
 Three things worth taking from this:
 
@@ -324,9 +331,14 @@ Nothing changed at the top: **use Anthropic's tool search, and add ToolHive vMCP
 or MCPProxy only for what it cannot do** — running, authenticating, isolating and
 governing many MCP servers.
 
-Between the two: **ToolHive** won on every measured axis — accuracy (81% vs 69%),
-tool-surface overhead (2 vs 12), and routing-path coverage (86–100%) — at the cost
-of a materially heavier config and an Experimental optimizer API. **MCPProxy** is
+Between the two, after the scorer correction it is closer than first reported.
+**ToolHive** leads on top-3 (44% vs 37%), on empty-result rate (1/43 vs 8/43) and
+on routing-path coverage (86–100%), and exposes 2 tools against MCPProxy's 12 — at
+the cost of a materially heavier config and an Experimental optimizer API.
+**MCPProxy actually leads on top-1** (26% vs 21%). If you weight "first answer
+correct", MCPProxy wins; if you weight "right answer somewhere the model can see
+it, and never nothing at all", ToolHive wins. The second is the better objective
+for a routing layer, but it is a judgement call, not a measurement. **MCPProxy** is
 the better single-binary local story and has security features nothing else has,
 but its score threshold returning *nothing* on vocabulary mismatch is the single
 riskiest behaviour found in this validation.
@@ -334,7 +346,7 @@ riskiest behaviour found in this validation.
 And the finding that should drive the decision: **the semantic arm — the thing
 that would fix every failure in this benchmark — is exactly what could not be
 tested.** All five lexical engines failed the same paraphrases, and on the real
-412-tool catalogue they all fell to ~21–23% top-1.
+412-tool catalogue they all fell to 21–28% top-1.
 
 ## What is still needed to finish this
 
@@ -364,4 +376,51 @@ fetch and closed again afterwards.
 
 Until one of those exists, the honest position is: **on a 412-tool catalogue,
 none of these layers routes reliably on lexical search alone.** Choosing on the
-strength of the lexical numbers alone would be choosing between 21% and 23%.
+strength of the lexical numbers alone would be choosing between 21% and 28% on
+one metric and the reverse ordering on another.
+
+---
+
+## Scorer audit (2026-08-24)
+
+The harness was re-read line by line after the fact, on the principle that numbers
+someone may act on deserve an adversarial pass. Four defects were found; two
+changed published results.
+
+**1. Prefix over-stripping — changed the numbers.** `strip_prefix` removed a
+separator-qualified prefix (`Server:tool`, `Server__tool`) *and then* an
+underscore-qualified one. Every ClickUp tool is itself named `clickup_*`, so
+`ClickUp:clickup_create_task` became `create_task` and never matched its ground
+truth. **5 of 43 queries were permanently unscoreable for MCPProxy and Nexus.**
+ToolHive was unaffected, because its `{workload}_` prefix matches on original
+casing first and returns before the lowercase candidate is tried — which is exactly
+why the bug survived: it produced plausible numbers for the tool being examined
+most closely. Fixed by splitting off exactly one qualifier.
+
+**2. Server-blind matching — inflated 2 queries.** Ten tool names in this catalogue
+exist on more than one server (`list_projects`, `search_issues`, `list_issues`, …).
+The scorer compared bare tool names, so a gateway answering GitHub's
+`search_issues` to "what is crashing in production right now" scored as correct
+when Sentry was intended. Now scored on `(server, tool)`, with the server checked
+whenever the gateway reports one.
+
+**3. Errors counted as empty results.** A JSON-RPC error and a genuine no-match
+both produced an empty ranked list, so a protocol failure would silently inflate
+the empty-result metric — the metric this report leans on most. Now counted and
+reported separately. **Re-running every condition showed 0 errors across all three
+gateways, so the previously published empty-result counts were genuine.**
+
+**4. `run-semantic.sh` masked failures.** The scoring step is piped to `tail`, and
+without `pipefail` a crashed run exited 0. Observed live: a failed `bge` run
+reported success. Fixed with `set -o pipefail`.
+
+**Net effect.** ToolHive's numbers are unchanged. MCPProxy rose from 21% to 26%
+top-1 and 30% to 37% top-3; Nexus from 23% to 28% and 30% to 37%. The
+qualitative conclusions survive — lexical routing still collapses at real
+catalogue scale, descriptions still do not rescue it, and ToolHive still has by far
+the lowest empty-result rate — but **"ToolHive won every measured axis" was wrong
+and has been retracted.**
+
+The general lesson is the one already in this document: on this harness, a
+surprising score is more often the scorer than the product. It has now been true
+three times.
