@@ -14,6 +14,7 @@
 # Linux/macOS, or WSL on Windows. Git Bash is not supported: the rig starts ~16
 # local servers and depends on POSIX process handling.
 set -u
+set -o pipefail   # else a crashed scoring run is masked by `| tail` and exits 0
 
 BACKEND="${1:-auto}"
 FIXMODE="${2:-tokens}"
