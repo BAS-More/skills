@@ -57,22 +57,41 @@ export function planRepository({ repository, files, policy, aliases = {} }) {
     if (config.managedBy !== 'bas-more-project-memory' || config.repository !== repository) throw new Error('Existing memory configuration has a different owner or identity');
     if (files[POLICY] == null || hash(files[POLICY]) !== config.policySha256) throw new Error('Existing policy was edited; review it before updating');
   } else if (files[POLICY] != null) throw new Error('Unmanaged policy already exists; preserve it for review');
+  const formatting = config?.formatting;
+  if (formatting) {
+    if (formatting.schemaVersion !== 1 || formatting.sourcePolicySha256 !== hash(policy) ||
+        !/^[a-z][a-z0-9-]*$/.test(formatting.tool ?? '') ||
+        !/^\d+\.\d+\.\d+(?:[-+].+)?$/.test(formatting.version ?? '') ||
+        !formatting.instructionBlockSha256 || typeof formatting.instructionBlockSha256 !== 'object') {
+      throw new Error('Reviewed formatting receipt or source policy changed; review and format the new policy before updating');
+    }
+  }
+  const installedPolicy = formatting ? files[POLICY] : policy;
   const nextConfig = {
     ...(config ?? {}),
     ...(Object.keys(aliases).length ? { instructionAliases: aliases } : {}),
     schemaVersion: VERSION, managedBy: 'bas-more-project-memory',
     repository, choice: 'enabled', authorization: 'owner-approved-existing-repository-rollout',
-    policySource: SOURCE, policySha256: hash(policy), requiredViews: VIEWS,
+    policySource: SOURCE, policySha256: hash(installedPolicy), requiredViews: VIEWS,
     graphReadiness: config?.graphReadiness ?? 'requires-repository-validation',
     privacy: 'local-embeddings-only',
     instructions: 'Follow POLICY.md; preserve existing tooling; record per-view evidence before marking graph setup complete.'
   };
   if (!Object.keys(aliases).length) delete nextConfig.instructionAliases;
-  const desired = { [POLICY]: policy, [CONFIG]: JSON.stringify(nextConfig, null, 2) + '\n' };
+  const desired = { [POLICY]: installedPolicy, [CONFIG]: JSON.stringify(nextConfig, null, 2) + '\n' };
   const instructions = ['AGENTS.md', 'CLAUDE.md', ...['AGENTS.override.md', '.claude/CLAUDE.md'].filter(file => files[file] != null || aliases[file])];
   for (const file of instructions) {
     const target = aliases[file] ?? file;
-    desired[target] = managedBlock(files[target], repoBody);
+    const normal = managedBlock(files[target], repoBody); // validates markers even for a reviewed formatted block
+    const blockHash = formatting?.instructionBlockSha256[target];
+    if (blockHash) {
+      const current = files[target] ?? '';
+      const start = current.indexOf(BEGIN), end = current.indexOf(END);
+      if (start < 0 || end < start || hash(current.slice(start, end + END.length)) !== blockHash) {
+        throw new Error('Reviewed formatted instruction block was edited: ' + target);
+      }
+      desired[target] = current;
+    } else desired[target] = normal;
   }
   const changes = Object.entries(desired).flatMap(([file, after]) => {
     const before = files[file] ?? null;

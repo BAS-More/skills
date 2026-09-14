@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { planRepository, managedBlock, applyPlan, rollback, readText, clientPlan, readRepository, INPUTS, POLICY, CONFIG } from './install.mjs';
@@ -141,4 +142,40 @@ test('preserves Git instruction aliases on Windows-style checkouts and rejects e
   assert.equal(planRepository({ repository, policy, ...readRepository(root) }).changes.length, 0);
   fs.writeFileSync(path.join(root, 'CLAUDE.md'), '../outside');
   assert.throws(() => readRepository(root), /Unsupported instruction alias/);
+});
+
+function formattedFixture(root) {
+  applyPlan(root, makePlan(root), path.join(root, 'backups'));
+  const digest = value => createHash('sha256').update(value).digest('hex');
+  const prettyPolicy = policy.replace('\n', '\n\n');
+  fs.writeFileSync(path.join(root, POLICY), prettyPolicy);
+  const instructionBlockSha256 = {};
+  for (const file of ['AGENTS.md', 'CLAUDE.md']) {
+    const formatted = readText(root, file).replace('## Project memory\n', '## Project memory\n\n');
+    fs.writeFileSync(path.join(root, file), formatted);
+    const block = formatted.match(/<!-- bas-more-project-memory:v1:start -->[\s\S]*?<!-- bas-more-project-memory:v1:end -->/)[0];
+    instructionBlockSha256[file] = digest(block);
+  }
+  const config = JSON.parse(readText(root, CONFIG));
+  config.policySha256 = digest(prettyPolicy);
+  config.formatting = { schemaVersion: 1, tool: 'prettier', version: '3.9.6', sourcePolicySha256: digest(policy), instructionBlockSha256 };
+  fs.writeFileSync(path.join(root, CONFIG), JSON.stringify(config, null, 2) + '\n');
+}
+test('preserves a reviewed formatter result and keeps later unrelated instruction edits', t => {
+  const root = fixture(t);
+  formattedFixture(root);
+  fs.appendFileSync(path.join(root, 'AGENTS.md'), 'Maintainer note outside the managed block.\n');
+  assert.equal(makePlan(root).changes.length, 0);
+  assert.ok(readText(root, POLICY).includes('\n\n'));
+});
+test('rejects stale formatting receipts, policy edits and edited formatted instruction blocks', t => {
+  const root = fixture(t);
+  formattedFixture(root);
+  assert.throws(() => planRepository({ repository, files: filesAt(root), policy: policy + 'New requirement\n' }), /source policy changed/);
+  fs.appendFileSync(path.join(root, POLICY), 'Unreviewed policy edit\n');
+  assert.throws(() => makePlan(root), /policy was edited/);
+  const second = fixture(t);
+  formattedFixture(second);
+  fs.writeFileSync(path.join(second, 'AGENTS.md'), readText(second, 'AGENTS.md').replace('Setup is enabled', 'Skip setup'));
+  assert.throws(() => makePlan(second), /formatted instruction block was edited/);
 });
