@@ -32,8 +32,8 @@ folder containing other projects, dependencies, caches or customer data.
 
 The owner has requested this workflow across their existing repositories.
 Apply that authorization within the repository/task scope actually given to
-the agent. Future projects should be offered the option; do not silently enroll
-unrelated repositories or run an organization-wide installer.
+the agent. Future projects should be offered the option. Batch setup is allowed
+within the owner's confirmed rollout scope; do not enroll unrelated repositories.
 
 ## Reference implementation
 
