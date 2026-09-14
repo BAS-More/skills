@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-14",
+  "reportType": "scope-summary",
+  "scope": "Owner-authorized project-memory policy installation",
+  "inventoryRepositoryCount": 242,
+  "eligibleRepositoryCount": 234,
+  "policyInstallationTargetCount": 233,
+  "verifiedPolicyPullRequestCount": 233,
+  "existingGraphSystemPreservedCount": 1,
+  "excludedArchivedCount": 7,
+  "excludedProtectedCount": 1,
+  "activeCodingClientsConfigured": 2,
+  "installerTestCount": 11,
+  "installerCI": "https://github.com/BAS-More/skills/actions/runs/34859254533",
+  "policyInstallationIsGraphValidation": false,
+  "detailLocation": "The private owner record contains installed/default-branch verification, outstanding repository gates and graph readiness. This public file intentionally omits private repository names and individual outcomes."
+}

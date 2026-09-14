@@ -160,3 +160,46 @@ Continuation: read docs/project-memory/README.md and preserve the independent
 ACTIVE workstream. Once an authorized execution host is available, implement and
 validate the shared installer before representing this as automatic setup.
 Keep the target repository's existing instructions, hooks and source data intact.
+
+
+## Independent project-memory installation — 2026-09-14
+
+This section supersedes the installation TODOs in the earlier template-preparation
+section. It does not complete the original ACTIVE routing benchmark.
+
+The owner authorized installation across existing repositories and active coding
+clients. `scripts/project-memory/install.mjs` implements reversible policy setup,
+identity/choice recording and instruction pointers while preserving original text,
+frontmatter, line endings, hooks and supported instruction aliases. It is a policy
+installer, not a universal nine-graph engine. See `docs/project-memory/INSTALL.md`.
+
+The original eight tests passed on AVISURFACE; all nine tests passed in Linux and
+Windows CI (run 34849931323). A later local repeat timed out; the final client
+configuration was installed from the CI-verified source and hash-verified. Active
+Codex override and Claude user rules include the future-project offer. No fresh
+interactive agent session was used to prove behavioral compliance.
+
+Each eligible target received an isolated PR with exact content/diff verification.
+Normal merges proceed only with the verified head and clean checks; required
+reviews, failing/pending checks and repository workflow constraints stay blockers.
+See `docs/project-memory/rollouts/2026-09-14.json` for the aggregate snapshot.
+Detailed repository inventories and client receipts are kept privately by the owner.
+MAH's existing graph system is preserved. No project is marked graph-complete merely
+because its policy files merged. The eight MAH external-service tests remain pending.
+
+Privacy correction: the public PR initially contained repository-name and branch/status
+metadata. HEAD contains aggregate counts only. Earlier public PR commits still retain
+that metadata; removing the current inventory does not erase commit history. The
+inventory did not contain credentials or source-file contents. Keep all detailed
+portfolio records private and squash this PR when its normal merge gates pass.
+
+Continuation: use the private rollout record to resolve open repository gates;
+bootstrap and validate graphs per project under POLICY.md. Do not recreate verified
+PRs or re-upload inventories. Maintain the separate benchmark handover unchanged.
+
+Final installer validation: 11 tests pass on Linux and Windows in run 34859254533.
+Three target formatter failures caused by the new memory files were corrected with
+reviewed Markdown content, preserved existing instructions and source/block hash
+receipts. Repository CI remains authoritative for their remaining gates. MAH's local
+session freshness check passed with all nine views and fingerprint
+`03424bdb1964993a731980ad3c6424c63de74112bb4adecee92148ffeb6a26e0`.

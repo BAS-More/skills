@@ -174,3 +174,10 @@ Tools I keep around but rarely use.
 - **[migrate-to-shoehorn](./skills/misc/migrate-to-shoehorn/SKILL.md)** — Migrate test files from `as` type assertions to @total-typescript/shoehorn.
 - **[scaffold-exercises](./skills/misc/scaffold-exercises/SKILL.md)** — Create exercise directory structures with sections, problems, solutions, and explainers.
 - **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.
+
+
+## Comprehensive project memory
+
+Use the [project-memory installer](docs/project-memory/INSTALL.md) to preserve existing
+agent instructions, enable the approved memory policy, and offer setup for future
+projects. Graph bootstrap and validation remain specific to each repository.
