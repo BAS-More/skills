@@ -159,7 +159,7 @@ function formattedFixture(root) {
   const config = JSON.parse(readText(root, CONFIG));
   config.policySha256 = digest(prettyPolicy);
   config.formatting = { schemaVersion: 1, tool: 'prettier', version: '3.9.6', sourcePolicySha256: digest(policy), instructionBlockSha256 };
-  fs.writeFileSync(path.join(root, CONFIG), JSON.stringify(config, null, 2) + '\n');
+  fs.writeFileSync(path.join(root, CONFIG), JSON.stringify(config, null, 4) + '\n');
 }
 test('preserves a reviewed formatter result and keeps later unrelated instruction edits', t => {
   const root = fixture(t);

@@ -78,7 +78,8 @@ export function planRepository({ repository, files, policy, aliases = {} }) {
     instructions: 'Follow POLICY.md; preserve existing tooling; record per-view evidence before marking graph setup complete.'
   };
   if (!Object.keys(aliases).length) delete nextConfig.instructionAliases;
-  const desired = { [POLICY]: installedPolicy, [CONFIG]: JSON.stringify(nextConfig, null, 2) + '\n' };
+  const configText = formatting && JSON.stringify(config) === JSON.stringify(nextConfig) ? files[CONFIG] : JSON.stringify(nextConfig, null, 2) + '\n';
+  const desired = { [POLICY]: installedPolicy, [CONFIG]: configText };
   const instructions = ['AGENTS.md', 'CLAUDE.md', ...['AGENTS.override.md', '.claude/CLAUDE.md'].filter(file => files[file] != null || aliases[file])];
   for (const file of instructions) {
     const target = aliases[file] ?? file;
