@@ -36,3 +36,19 @@ test the shared toolkit, adapt extractors per repository, then perform the
 authorized rollout and configure the actual clients. Preserve the original
 ACTIVE routing benchmark and do not claim it or MAH's external-service tests
 were completed by this documentation work.
+
+
+## Project-memory installation continuation — 2026-09-14
+
+The approved templates now have a tested policy installer; start with
+`docs/project-memory/INSTALL.md`, then the latest installation section in HANDOVER.md.
+Codex and Claude user instructions were installed and hash-verified on AVISURFACE.
+The repository rollout has isolated, verified PRs and merges subject to normal gates.
+Read the aggregate snapshot and the owner's private detailed record before doing
+further work; do not repeat already verified installation or publish private inventory.
+
+The next substantive memory task is per-project graph bootstrap and acceptance,
+plus resolving the recorded repository gates. Policy installation is not proof of
+nine-graph readiness or actual agent compliance. Preserve the existing MAH setup,
+the separate eight pending external-service cases and the original ACTIVE benchmark.
+Earlier public PR history contains portfolio metadata; HEAD is aggregate-only.

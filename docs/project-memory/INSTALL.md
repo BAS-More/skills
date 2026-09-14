@@ -16,8 +16,7 @@ hooks, application manifests, MCP registrations and graph engines are preserved.
 This installs instructions and records setup authorization. It does not implement
 MAH's project-specific graph extractors for every language or generate nine graphs.
 Each project must finish the bootstrap and acceptance checks in POLICY.md before
-its graph readiness is reported as complete. A draft PR is a proposed repository
-installation; the default branch changes only after the PR is merged.
+its graph readiness is reported as complete. A PR proposes repository changes; the default branch changes only after that PR is merged.
 
 For the active local coding clients:
 

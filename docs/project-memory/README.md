@@ -1,78 +1,62 @@
 # Reusable comprehensive project-memory policy
 
-Prepared 2026-09-14 for Avi's request to use MAH's memory-graph workflow across
-existing repositories and offer it for future projects.
-
-**Status: reusable instruction templates, not a tested universal installer.**
-No target repository or computer is enrolled merely by storing these files.
+The approved templates now have a tested policy installer. Follow [INSTALL.md](INSTALL.md)
+to install repository instructions and configure the Codex and Claude user rules.
+Installation records an enabled setup choice; each project still needs its graph
+bootstrap and acceptance checks before graph readiness is complete.
 
 ## Files to use
 
-- [AGENTS.template.md](AGENTS.template.md): the per-project entry and bootstrap
-  policy. In a repository without AGENTS.md, copy it to the repository root as
-  AGENTS.md. If AGENTS.md already exists, merge the relevant sections while
-  preserving the existing entry gate and project rules.
-- [GLOBAL.template.md](GLOBAL.template.md): append the policy section to each
-  coding client's existing user-level instructions to offer setup for new
-  projects and remember the project's decision.
+- [INSTALL.md](INSTALL.md): plan, install, status, client configuration and recovery commands.
+- [AGENTS.template.md](AGENTS.template.md): approved per-project bootstrap, routine memory use,
+  nine-view coverage, privacy and acceptance policy. The installer preserves it in
+  `.project-memory/POLICY.md` and inserts compact pointers into existing instructions.
+- [GLOBAL.template.md](GLOBAL.template.md): the original future-project offer template.
+  Use the installer client command to select the actual active Codex/Claude file.
+- [rollouts/2026-09-14.json](rollouts/2026-09-14.json): aggregate rollout snapshot.
+  Detailed repository inventories are kept privately.
 
-For Claude Code, add `@AGENTS.md` on its own line in the existing root CLAUDE.md;
-preserve its other instructions. Configure and verify adapters for other clients.
+A repository file is read by clients that support that instruction mechanism; it
+is not a background watcher or proof that every arbitrary agent followed it.
+Open a new client session after changing global rules. Other machines and clients
+need their own supported instruction configuration.
 
-The project template asks an agent to perform setup when authorized, then follow
-the graph workflow. It is not executable and cannot install dependencies by
-itself. A shared installer and per-stack extractor adapters still need to be
-factored out, implemented and tested from the reference MAH sources.
+## Reference implementation
 
-## What is reused
+MAH is pinned at `688eee19709632f1a5fb6900184ff89217dddea1`, with analyzer
+`557277c88feafbfd8b232ceacfda59d64b61ef81`. See its
+[setup guide](https://github.com/BAS-More/MAH/blob/688eee19709632f1a5fb6900184ff89217dddea1/docs/agent-context/setup.md).
+It supplies structural, dependency, compiler-module, database, process, hierarchy,
+semantic, contract and workflow views, with freshness and context/impact commands.
+Its extractors are project-specific. Reusing its generated graphs in a different
+repository would misrepresent that project's source.
 
-The reference is MAH commit
-`688eee19709632f1a5fb6900184ff89217dddea1`, with analyzer
-`557277c88feafbfd8b232ceacfda59d64b61ef81`. It contains nine graph views,
-local semantic retrieval, content fingerprints, portable readers, context and
-impact queries, change detection, session hooks and staged/CI freshness checks.
+## Remaining graph work
 
-Reference:
-https://github.com/BAS-More/MAH/blob/688eee19709632f1a5fb6900184ff89217dddea1/docs/agent-context/setup.md
+For each enabled repository, identify applicable source languages, databases and
+existing graph tooling. Adapt pinned extractors; preserve source and local privacy.
+Validate all applicable views, real local semantic retrieval, source fingerprints,
+stale/partial-stage rejection and checkout isolation. Record unsupported scopes
+separately from genuinely inapplicable ones, with evidence. Finish POLICY.md's
+acceptance criteria before changing graph readiness to complete.
 
-MAH-specific migration, hierarchy, contract and compiler extraction must be
-adapted to each repository. Unsupported and not-applicable scopes must be
-distinguished. Copying MAH's generated graphs would misrepresent another project.
+The current installer deploys policy and setup choices. It does not implement a
+universal graph runner, register every editor MCP server, or generate nine graphs.
+Keep tooling pinned and review upgrades; preserve existing hooks and protection gates.
 
-## Remaining implementation and rollout
+## Validation and rollout evidence
 
-1. Inventory the owner's authorized repositories and existing instructions.
-   Record applicable languages, package managers, databases and current graph
-   coverage. Preserve active branches and concurrent changes.
-2. Factor a pinned shared installer/graph runner from the MAH implementation.
-   Parameterize project paths and extractors; use explicit project roots and
-   repeatable setup. Package it independently from application dependencies.
-3. Pilot on a separate representative repository/worktree. Exercise all target
-   acceptance checks in AGENTS.template.md, including real local semantic
-   retrieval, stale/partial-stage rejection and checkout isolation.
-4. Add bounded, opt-in batch rollout through one reviewable branch/PR per target.
-   Preserve existing hooks, approvals and branch protections. Record a coverage
-   matrix, actual outcomes and blockers for each repository.
-5. Install the global offer policy in the owner's actual coding clients and
-   verify a new project receives the offer once, while an enabled/declined
-   project is not repeatedly prompted.
-6. Keep the shared toolkit pinned; deliver reviewed version updates rather than
-   silently changing all repositories whenever an upstream branch moves.
+- The original eight installer preservation/recovery tests passed on AVISURFACE.
+- All nine tests, including Windows Git instruction-link emulation, passed on
+  Linux and Windows CI: [verified run](https://github.com/BAS-More/skills/actions/runs/34849931323).
+- A later local repeat timed out; no pass is claimed for that attempt.
+- Codex's active override and Claude's user instruction file were written and
+  hash-verified on AVISURFACE. A fresh interactive agent session was not exercised.
+- Repository changes are read back exactly and compared with their planned file set;
+  merged changes are read back from the default branch. Failed/pending checks and
+  repository workflow requirements remain recorded blockers.
+- The original semantic-routing benchmark remains a separate ACTIVE workstream.
+  MAH's eight pending external-service cases were not run by these installer tests.
 
-No machine-wide ACL traversal, Docker Desktop installation, secret migration or
-remote application deployment is required by this policy. Installation still
-needs an accessible execution host, appropriate private-repository access and
-permitted downloads for verified tooling/model assets.
-
-## Evidence for this preparation
-
-- Read the current MAH AGENTS.md, setup guide, nine-graph inventory and tool pin
-  through GitHub.
-- Read the skills repository entry gate, handovers and publication rules.
-- Verified the official Codex and Claude user/project instruction mechanisms.
-- Templates have been reviewed for relative links, scope, pin consistency,
-  evidence boundaries, instruction preservation and privacy requirements.
-- No installer, graph-generation, Windows/Linux/macOS or application tests were
-  executed for this new template package.
-- The original skills semantic-routing benchmark remains a separate ACTIVE
-  workstream. MAH's eight pending external-service tests remain pending.
+No broad ACL traversal, Docker Desktop installation or source upload to an external
+embedding service is required by this policy deployment.
