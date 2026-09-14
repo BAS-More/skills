@@ -11,6 +11,7 @@ export const SOURCE = 'BAS-More/skills@313901a093244627d08c79b967f8db614aea43f5'
 export const POLICY = '.project-memory/POLICY.md';
 export const CONFIG = '.project-memory/config.json';
 export const INPUTS = ['AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', '.claude/CLAUDE.md', POLICY, CONFIG];
+export const ROOT_INSTRUCTIONS = ['AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md'];
 export const VIEWS = ['structural', 'dependencies', 'modules', 'database', 'processes', 'hierarchy', 'semantic', 'contracts', 'workflows'];
 const BEGIN = '<!-- bas-more-project-memory:v1:start -->';
 const END = '<!-- bas-more-project-memory:v1:end -->';
@@ -42,7 +43,10 @@ const repoBody = [
   'do not establish that graphs, semantic retrieval, hooks or integrations work.'
 ].join('\n');
 
-export function planRepository({ repository, files, policy }) {
+export function planRepository({ repository, files, policy, aliases = {} }) {
+  for (const [file, target] of Object.entries(aliases)) {
+    if (!ROOT_INSTRUCTIONS.includes(file) || !ROOT_INSTRUCTIONS.includes(target) || file === target || aliases[target] || files[target] == null) throw new Error('Unsupported instruction alias; preserve it for review');
+  }
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) throw new Error('Explicit owner/repository identity required');
   if (repository.toLowerCase() === 'bas-more/claude-home-backup') return { repository, outcome: 'excluded-protected-backup', changes: [] };
   if (!policy?.startsWith('# Comprehensive project memory')) throw new Error('Approved policy is missing');
@@ -55,6 +59,7 @@ export function planRepository({ repository, files, policy }) {
   } else if (files[POLICY] != null) throw new Error('Unmanaged policy already exists; preserve it for review');
   const nextConfig = {
     ...(config ?? {}),
+    ...(Object.keys(aliases).length ? { instructionAliases: aliases } : {}),
     schemaVersion: VERSION, managedBy: 'bas-more-project-memory',
     repository, choice: 'enabled', authorization: 'owner-approved-existing-repository-rollout',
     policySource: SOURCE, policySha256: hash(policy), requiredViews: VIEWS,
@@ -62,13 +67,13 @@ export function planRepository({ repository, files, policy }) {
     privacy: 'local-embeddings-only',
     instructions: 'Follow POLICY.md; preserve existing tooling; record per-view evidence before marking graph setup complete.'
   };
-  const desired = {
-    [POLICY]: policy,
-    [CONFIG]: JSON.stringify(nextConfig, null, 2) + '\n',
-    'AGENTS.md': managedBlock(files['AGENTS.md'], repoBody),
-    'CLAUDE.md': managedBlock(files['CLAUDE.md'], repoBody)
-  };
-  for (const file of ['AGENTS.override.md', '.claude/CLAUDE.md']) if (files[file] != null) desired[file] = managedBlock(files[file], repoBody);
+  if (!Object.keys(aliases).length) delete nextConfig.instructionAliases;
+  const desired = { [POLICY]: policy, [CONFIG]: JSON.stringify(nextConfig, null, 2) + '\n' };
+  const instructions = ['AGENTS.md', 'CLAUDE.md', ...['AGENTS.override.md', '.claude/CLAUDE.md'].filter(file => files[file] != null || aliases[file])];
+  for (const file of instructions) {
+    const target = aliases[file] ?? file;
+    desired[target] = managedBlock(files[target], repoBody);
+  }
   const changes = Object.entries(desired).flatMap(([file, after]) => {
     const before = files[file] ?? null;
     return before === after ? [] : [{ file, before, after, beforeHash: before == null ? null : hash(before), afterHash: hash(after) }];
@@ -95,6 +100,31 @@ export function readText(root, relative) {
   const value = fs.readFileSync(file, 'utf8');
   if (value.includes('\0')) throw new Error('Binary instruction file: ' + relative);
   return value;
+}
+export function readRepository(root) {
+  root = fs.realpathSync(root);
+  let trackedLinks = [];
+  try {
+    const entries = execFileSync('git', ['ls-files', '--stage', '-z', '--', ...ROOT_INSTRUCTIONS], { cwd: root, encoding: 'utf8', timeout: 15000 });
+    trackedLinks = entries.split('\0').filter(row => row.startsWith('120000 ')).map(row => row.slice(row.indexOf('\t') + 1));
+  } catch (error) {
+    if (!String(error.stderr).includes('not a git repository')) throw error;
+  }
+  const aliases = {}, files = {};
+  for (const file of INPUTS) {
+    let link = false;
+    const absolute = path.join(root, file);
+    try { link = fs.lstatSync(absolute).isSymbolicLink(); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (ROOT_INSTRUCTIONS.includes(file) && (link || trackedLinks.includes(file))) {
+      const target = (link ? fs.readlinkSync(absolute) : readText(root, file)).replace(/^\.\//, '');
+      if (!ROOT_INSTRUCTIONS.includes(target) || target === file || trackedLinks.includes(target)) throw new Error('Unsupported instruction alias: ' + file);
+      const content = readText(root, target);
+      if (content == null) throw new Error('Instruction alias target is missing: ' + file);
+      aliases[file] = target;
+      files[target] = content;
+    } else files[file] = readText(root, file);
+  }
+  return { files, aliases };
 }
 function atomic(file, content) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -198,10 +228,10 @@ async function main() {
   }
   const root = fs.realpathSync(option('--root') ?? process.cwd());
   const repository = option('--repository');
-  const files = Object.fromEntries(INPUTS.map(file => [file, readText(root, file)]));
+  const { files, aliases } = readRepository(root);
   if (command === 'status') return { repository: files[CONFIG] ? JSON.parse(files[CONFIG]).repository : null, policyInstalled: files[POLICY] != null && files[CONFIG] != null, graphReadiness: files[CONFIG] ? JSON.parse(files[CONFIG]).graphReadiness : 'unknown' };
   const policy = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/project-memory/AGENTS.template.md'), 'utf8');
-  const plan = planRepository({ repository, files, policy });
+  const plan = planRepository({ repository, files, policy, aliases });
   if (command === 'plan') return { ...plan, changes: plan.changes.map(({ file, beforeHash, afterHash }) => ({ file, beforeHash, afterHash })) };
   if (command !== 'install') throw new Error('Commands: plan, install, status, clients [--apply], rollback <journal>');
   const gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: root, encoding: 'utf8', timeout: 15000 }).trim();

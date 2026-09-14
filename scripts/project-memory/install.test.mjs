@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { planRepository, managedBlock, applyPlan, rollback, readText, clientPlan, INPUTS, POLICY, CONFIG } from './install.mjs';
+import { execFileSync } from 'node:child_process';
+import { planRepository, managedBlock, applyPlan, rollback, readText, clientPlan, readRepository, INPUTS, POLICY, CONFIG } from './install.mjs';
 
 const policy = '# Comprehensive project memory\nTest policy with nine required views.\n';
 const repository = 'BAS-More/test-fixture';
@@ -43,7 +44,7 @@ test('preserves all existing instructions, frontmatter, overrides and hook bytes
   assert.equal(fs.existsSync(path.join(root, POLICY)), false);
 });
 
-test('power-failure recovery journal and controlled failure restore only installer changes', t => {
+test('controlled interruption restores installer changes and retains a recovery journal', t => {
   const root = fixture(t);
   fs.writeFileSync(path.join(root, 'AGENTS.md'), 'Original\n');
   let writes = 0;
@@ -87,7 +88,7 @@ test('honors deferred and declined choices and the protected home-backup exclusi
   assert.equal(planRepository({ repository: 'BAS-More/claude-home-backup', files: {}, policy }).outcome, 'excluded-protected-backup');
 });
 
-test('rejects path traversal and symbolic links, including dangling links', t => {
+test('rejects path traversal and symbolic-link directories', t => {
   const root = fixture(t);
   assert.throws(() => readText(root, '../outside'), /Invalid/);
   const outside = fixture(t);
@@ -118,4 +119,26 @@ test('two repositories stay isolated and empty repositories receive truthful set
   assert.equal(JSON.parse(readText(first, CONFIG)).repository, repository);
   assert.equal(JSON.parse(readText(first, CONFIG)).requiredViews.length, 9);
   assert.notEqual(JSON.parse(readText(first, CONFIG)).graphReadiness, 'complete');
+});
+
+test('preserves Git instruction aliases on Windows-style checkouts and rejects escaping link targets', t => {
+  const root = fixture(t);
+  const git = (args, options = {}) => execFileSync('git', args, { cwd: root, encoding: 'utf8', ...options });
+  git(['init', '-q']);
+  git(['config', 'core.symlinks', 'false']);
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), 'Shared original rules\n');
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'), 'AGENTS.md');
+  const blob = git(['hash-object', '-w', '--stdin'], { input: 'AGENTS.md' }).trim();
+  git(['update-index', '--add', '--cacheinfo', '120000,' + blob + ',CLAUDE.md']);
+  const beforeIndex = git(['ls-files', '--stage']);
+  const data = readRepository(root);
+  assert.deepEqual(data.aliases, { 'CLAUDE.md': 'AGENTS.md' });
+  const plan = planRepository({ repository, policy, ...data });
+  assert.ok(plan.changes.every(change => change.file !== 'CLAUDE.md'));
+  applyPlan(root, plan, path.join(root, 'backups'));
+  assert.equal(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), 'AGENTS.md');
+  assert.equal(git(['ls-files', '--stage']), beforeIndex);
+  assert.equal(planRepository({ repository, policy, ...readRepository(root) }).changes.length, 0);
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'), '../outside');
+  assert.throws(() => readRepository(root), /Unsupported instruction alias/);
 });
