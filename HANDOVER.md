@@ -128,3 +128,35 @@ This handover may be marked `COMPLETE` only when:
 ## Handover maintenance
 
 On every meaningful session stop, update this file and `HANDOVER-PROMPT.md` in the same commit. Keep the detailed benchmark handover for experiment-specific commands, but make this root file the single active status index.
+
+
+## Independent project-memory templates — 2026-09-14
+
+Avi separately requests the comprehensive MAH graph workflow across existing
+repositories, with an offer for future projects. This independently requested
+documentation work does not replace or complete the original ACTIVE semantic
+routing benchmark.
+
+Branch: `codex/project-memory-bootstrap-20260914`, based on skills commit `f980d479e904f3e2ee74db4534d7c291b00887db`.
+Deliverables: `docs/project-memory/README.md`, `AGENTS.template.md` and
+`GLOBAL.template.md` in that directory. They define an agent-readable bootstrap
+policy, routine graph usage, nine-view coverage, privacy, acceptance criteria and
+the user-level future-project offer.
+
+Reference MAH: `688eee19709632f1a5fb6900184ff89217dddea1`; analyzer:
+`557277c88feafbfd8b232ceacfda59d64b61ef81`.
+The MAH implementation is project-specific. These templates do not supply a
+generic executable installer, install tools on any computer, enroll repositories
+or guarantee arbitrary agents comply. Source factoring, per-stack adapters,
+pilot validation, individual target PRs and client configuration remain.
+
+Read-only preparation used GitHub API equivalents for repository HEAD, tree and
+open-PR inspection; no local Git worktree or project command was available because
+the execution environment failed initialization. Reviewed the templates and
+their source references; no runtime/installer/application test is claimed.
+Existing skill buckets/public indexes and benchmark files are unchanged.
+
+Continuation: read docs/project-memory/README.md and preserve the independent
+ACTIVE workstream. Once an authorized execution host is available, implement and
+validate the shared installer before representing this as automatic setup.
+Keep the target repository's existing instructions, hooks and source data intact.

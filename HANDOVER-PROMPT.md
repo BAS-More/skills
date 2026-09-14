@@ -23,3 +23,16 @@ Primary objective: finish the semantic MCP/tool-routing evaluation without tunin
 Do not kill processes with broad `pkill -f`, commit caches/secrets, or report a score before validating the scorer.
 
 Before stopping, update `HANDOVER.md` and this prompt, run the relevant checks, commit, push, and open/merge a PR according to repository protections. Mark the handover `COMPLETE` only when its definition of done is fully evidenced.
+
+
+## Independent project-memory template continuation — 2026-09-14
+
+Avi also requests comprehensive MAH-style memory graphs across repositories and
+an offer for future projects. The separate branch `codex/project-memory-bootstrap-20260914`
+adds docs/project-memory/README.md plus project/global instruction templates.
+Read those files and the matching HANDOVER.md section when continuing this task.
+They are bootstrap instructions, not a verified universal installer. Factor and
+test the shared toolkit, adapt extractors per repository, then perform the
+authorized rollout and configure the actual clients. Preserve the original
+ACTIVE routing benchmark and do not claim it or MAH's external-service tests
+were completed by this documentation work.
