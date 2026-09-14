@@ -196,3 +196,10 @@ portfolio records private and squash this PR when its normal merge gates pass.
 Continuation: use the private rollout record to resolve open repository gates;
 bootstrap and validate graphs per project under POLICY.md. Do not recreate verified
 PRs or re-upload inventories. Maintain the separate benchmark handover unchanged.
+
+Final installer validation: 11 tests pass on Linux and Windows in run 34859254533.
+Three target formatter failures caused by the new memory files were corrected with
+reviewed Markdown content, preserved existing instructions and source/block hash
+receipts. Repository CI remains authoritative for their remaining gates. MAH's local
+session freshness check passed with all nine views and fingerprint
+`03424bdb1964993a731980ad3c6424c63de74112bb4adecee92148ffeb6a26e0`.

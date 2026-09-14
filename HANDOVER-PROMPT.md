@@ -52,3 +52,7 @@ plus resolving the recorded repository gates. Policy installation is not proof o
 nine-graph readiness or actual agent compliance. Preserve the existing MAH setup,
 the separate eight pending external-service cases and the original ACTIVE benchmark.
 Earlier public PR history contains portfolio metadata; HEAD is aggregate-only.
+
+The final installer has 11 passing Linux/Windows tests, including formatter receipts.
+MAH's nine-view session freshness check passed. Use the private final record for
+per-repository merge outcomes; the public JSON records scope only.

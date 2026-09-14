@@ -53,3 +53,19 @@ runtime acceptance or MAH external-service integration tests.
 Keep detailed repository inventories private. The shared repository publishes only
 aggregate rollout counts. Client rules look for the private owner registry under
 ~/.project-memory/rollouts/2026-09-14.json, not a public list of private projects.
+
+Repository formatter compatibility:
+
+After formatting the installed policy and managed instruction blocks, review the
+formatted document content and confirm existing instructions outside the block are
+unchanged. The installation record can retain that reviewed formatting with
+`formatting.schemaVersion: 1`, the actual `tool` and `version`, the approved raw
+`sourcePolicySha256`, and an `instructionBlockSha256` map keyed by instruction file.
+Each block digest includes both managed markers. `policySha256` records the actual
+formatted POLICY.md. These are integrity receipts for reviewed formatter output;
+do not create them for an unreviewed policy rewrite. An upstream policy change or
+edited formatted block fails visibly and requires a new review. Equivalent JSON
+formatting is preserved. No formatter checks or repository gates are disabled.
+
+The final installer passes 11 tests on Linux and Windows:
+https://github.com/BAS-More/skills/actions/runs/34859254533

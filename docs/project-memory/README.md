@@ -47,8 +47,8 @@ Keep tooling pinned and review upgrades; preserve existing hooks and protection 
 ## Validation and rollout evidence
 
 - The original eight installer preservation/recovery tests passed on AVISURFACE.
-- All nine tests, including Windows Git instruction-link emulation, passed on
-  Linux and Windows CI: [verified run](https://github.com/BAS-More/skills/actions/runs/34849931323).
+- All eleven tests, including Windows Git instruction links and reviewed formatting, passed on
+  Linux and Windows CI: [verified run](https://github.com/BAS-More/skills/actions/runs/34859254533).
 - A later local repeat timed out; no pass is claimed for that attempt.
 - Codex's active override and Claude's user instruction file were written and
   hash-verified on AVISURFACE. A fresh interactive agent session was not exercised.
