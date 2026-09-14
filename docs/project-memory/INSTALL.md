@@ -32,7 +32,9 @@ not a background GitHub watcher or a mechanical proof of graph use. Other machin
 and cloud clients require their own instruction configuration.
 
 A rerun with unchanged policy is a no-op. Edited policies, conflicting identities,
-malformed blocks and symbolic links fail visibly. Deferred and declined choices
+malformed blocks and unsafe symbolic links fail visibly. Root instruction aliases
+between AGENTS.md, AGENTS.override.md and CLAUDE.md preserve their existing link
+and update the regular target. Git's Windows symlink emulation is handled too. Deferred and declined choices
 are preserved. The protected claude-home-backup repository is excluded.
 
 Local changes have recovery journals. The command prints their exact locations:
@@ -48,3 +50,7 @@ Validation:
 
 These tests cover policy installation and recovery. They do not count as graph
 runtime acceptance or MAH external-service integration tests.
+
+Keep detailed repository inventories private. The shared repository publishes only
+aggregate rollout counts. Client rules look for the private owner registry under
+~/.project-memory/rollouts/2026-09-14.json, not a public list of private projects.
