@@ -1,4 +1,4 @@
-# Continuation prompt — BAS-More/skills
+# Continuation prompt for BAS-More/skills
 
 > **Update 2026-09-29: the routing-benchmark objective below is complete** (Run 4 in
 > `docs/mcp-tool-routing-layer-validation.md`; summary in `HANDOVER.md` → "Session
@@ -6,7 +6,7 @@
 >
 > **Update 2026-10-06:** the `claude/plugin-json-misc` PR (#14) is merged as
 > `fad207d`, so the four `skills/misc/` skills are in `.claude-plugin/plugin.json`.
-> The publication invariants are no longer a manual checklist — run
+> The publication invariants are no longer a manual checklist. Run
 > `./scripts/check-invariants.sh` before committing any skill change, and the
 > `Skill invariants` workflow runs it on every PR that touches `skills/`,
 > `README.md`, or the manifest. See `HANDOVER.md` → "Session 2026-10-06".
@@ -16,7 +16,7 @@
 > 2. Normalise the `Status:` field in `HANDOVER.md` to the enum
 >    `ACTIVE | BLOCKED | COMPLETE` that `00-READ-FIRST.md` defines and gates on; it
 >    currently holds a prose sentence that an automated reader cannot parse.
-> 3. Run `shellcheck` over `scripts/check-invariants.sh` — the cloud session that
+> 3. Run `shellcheck` over `scripts/check-invariants.sh`. The cloud session that
 >    wrote it was denied the binary download by egress policy, so it is
 >    behaviour-tested but not statically linted.
 
@@ -38,7 +38,7 @@ Primary objective: finish the semantic MCP/tool-routing evaluation without tunin
 - Reject any semantic result with zero embedding requests.
 - Record top-1, empty-result rate, embedding calls, overhead, exclusions, commit, and configuration.
 - Update `docs/mcp-tool-routing-layer-validation.md` with a reproducible conclusion.
-- Maintain the skill bucket, README, and plugin-manifest invariants — verify with
+- Maintain the skill bucket, README, and plugin-manifest invariants. Verify with
   `./scripts/check-invariants.sh`, not by reading the rules by hand.
 
 Do not kill processes with broad `pkill -f`, commit caches/secrets, or report a score before validating the scorer.
@@ -46,7 +46,7 @@ Do not kill processes with broad `pkill -f`, commit caches/secrets, or report a 
 Before stopping, update `HANDOVER.md` and this prompt, run the relevant checks, commit, push, and open/merge a PR according to repository protections. Mark the handover `COMPLETE` only when its definition of done is fully evidenced.
 
 
-## Independent project-memory template continuation — 2026-09-14
+## Independent project-memory template continuation, 2026-09-14
 
 Avi also requests comprehensive MAH-style memory graphs across repositories and
 an offer for future projects. The separate branch `codex/project-memory-bootstrap-20260914`
@@ -59,7 +59,7 @@ ACTIVE routing benchmark and do not claim it or MAH's external-service tests
 were completed by this documentation work.
 
 
-## Project-memory installation continuation — 2026-09-14
+## Project-memory installation continuation, 2026-09-14
 
 The approved templates now have a tested policy installer; start with
 `docs/project-memory/INSTALL.md`, then the latest installation section in HANDOVER.md.

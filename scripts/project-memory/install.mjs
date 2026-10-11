@@ -75,7 +75,19 @@ export function planRepository({ repository, files, policy, aliases = {} }) {
   let config;
   if (files[CONFIG] != null) {
     config = JSON.parse(files[CONFIG]);
-    if (['declined', 'deferred'].includes(config.choice)) return { repository, outcome: 'preserved-' + config.choice, changes: [] };
+    if (['declined', 'deferred'].includes(config.choice)) {
+      // The choice is honoured unconditionally: INSTALL.md promises declined and deferred
+      // choices are preserved, and requiring provenance first would break the one input
+      // that reaches here. But a config COPIED from another repository returned output
+      // byte-identical to a local decision, so an operator could not tell a foreign
+      // record from one somebody here made. Report it instead of gating on it.
+      const foreign = {
+        ...(config.repository != null && config.repository !== repository ? { recordedRepository: config.repository } : {}),
+        ...(config.managedBy != null && config.managedBy !== 'bas-more-project-memory' ? { recordedManagedBy: config.managedBy } : {}),
+      };
+      const outcome = 'preserved-' + config.choice + (Object.keys(foreign).length ? '-foreign-record' : '');
+      return { repository, outcome, ...foreign, changes: [] };
+    }
     if (config.managedBy !== 'bas-more-project-memory' || config.repository !== repository) throw new Error('Existing memory configuration has a different owner or identity');
     if (files[POLICY] == null || !matchesPin(files[POLICY], config.policySha256)) throw new Error('Existing policy was edited; review it before updating');
   } else if (files[POLICY] != null) throw new Error('Unmanaged policy already exists; preserve it for review');
@@ -172,13 +184,37 @@ export function readRepository(root) {
   }
   return { files, aliases };
 }
-function atomic(file, content) {
+// The mode an atomically-written file should end up with.
+//
+// WHY THIS IS NOT JUST 0o600. The temp file is created 0o600 on purpose, so the content is
+// never briefly world-readable, but nothing restored the destination's own mode before the
+// rename. So installing rewrote AGENTS.md from 644 and CLAUDE.md from 664 to owner-only,
+// and git models only 100644 against 100755, which makes that downgrade invisible in
+// review. INSTALL.md promises the opposite: no broad permission changes.
+//
+// `keepRestrictive` is for the recovery journal, which holds the before-images of the
+// files being replaced and is deliberately owner-only whatever the umask says.
+function targetMode(file, keepRestrictive) {
+  if (keepRestrictive) return 0o600;
+  try {
+    return fs.statSync(file).mode & 0o7777;
+  } catch {
+    // New file: what an ordinary write would have produced under this umask.
+    return 0o666 & ~process.umask();
+  }
+}
+function atomic(file, content, { keepRestrictive = false } = {}) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
+  const mode = targetMode(file, keepRestrictive);
   const tmp = file + '.' + randomUUID() + '.tmp';
   let descriptor;
   try {
     descriptor = fs.openSync(tmp, 'wx', 0o600);
     fs.writeFileSync(descriptor, content);
+    fs.fsyncSync(descriptor);
+    // Through the open descriptor, not the path, so there is no window in which another
+    // process could substitute the file this chmod lands on.
+    if (mode !== 0o600) fs.fchmodSync(descriptor, mode);
     fs.fsyncSync(descriptor);
     fs.closeSync(descriptor); descriptor = undefined;
     fs.renameSync(tmp, file);
@@ -194,7 +230,7 @@ export function applyPlan(root, plan, backupDirectory, { afterWrite } = {}) {
   fs.mkdirSync(backupDirectory, { recursive: true });
   const journalPath = path.join(backupDirectory, 'project-memory-' + randomUUID() + '.json');
   const journal = { schemaVersion: 1, root, repository: plan.repository, state: 'applying', changes: plan.changes };
-  atomic(journalPath, JSON.stringify(journal, null, 2) + '\n');
+  atomic(journalPath, JSON.stringify(journal, null, 2) + '\n', { keepRestrictive: true });
   try {
     for (const change of plan.changes) {
       if (readText(root, change.file) !== change.before) throw new Error('Concurrent edit during installation: ' + change.file);
@@ -203,7 +239,7 @@ export function applyPlan(root, plan, backupDirectory, { afterWrite } = {}) {
     }
     for (const change of plan.changes) if (readText(root, change.file) !== change.after) throw new Error('Readback failed: ' + change.file);
     journal.state = 'applied';
-    atomic(journalPath, JSON.stringify(journal, null, 2) + '\n');
+    atomic(journalPath, JSON.stringify(journal, null, 2) + '\n', { keepRestrictive: true });
     return { repository: plan.repository, outcome: 'policy-installed', graphReadiness: plan.graphReadiness, applied: plan.changes.length, journalPath };
   } catch (error) {
     try { rollback(journalPath); } catch (recoveryError) { error.message += '; recovery requires review: ' + recoveryError.message; }
@@ -287,7 +323,37 @@ async function main() {
   const root = fs.realpathSync(option('--root') ?? process.cwd());
   const repository = option('--repository');
   const { files, aliases } = readRepository(root);
-  if (command === 'status') return { repository: files[CONFIG] ? JSON.parse(files[CONFIG]).repository : null, policyInstalled: files[POLICY] != null && files[CONFIG] != null, graphReadiness: files[CONFIG] ? JSON.parse(files[CONFIG]).graphReadiness : 'unknown' };
+  // `status` answered from existence alone, so a tree whose POLICY.md had been EDITED
+  // reported policyInstalled: true and exit 0, while `plan` on the identical tree refused
+  // with "Existing policy was edited". INSTALL.md promises edited policies fail visibly,
+  // and that promise held for plan and install but not for the command an operator sweeps
+  // several repositories with. It now runs the same policy-integrity check and reports the
+  // reason, while still exiting 0 so a sweep is not stopped by one bad repository.
+  //
+  // What it deliberately does NOT claim: `status` takes no --repository, so it has nothing
+  // to compare the recorded identity against and cannot detect a config copied from
+  // another repository. It reports policy integrity only, and `policyState` says which
+  // question was answered.
+  if (command === 'status') {
+    if (files[CONFIG] == null) {
+      return { repository: null, policyInstalled: false, policyState: 'not-installed', graphReadiness: 'unknown' };
+    }
+    let config;
+    try {
+      config = JSON.parse(files[CONFIG]);
+    } catch (error) {
+      return { repository: null, policyInstalled: false, policyState: 'review-required: configuration is not valid JSON', graphReadiness: 'unknown' };
+    }
+    const base = { repository: config.repository ?? null, graphReadiness: config.graphReadiness ?? 'unknown' };
+    if (files[POLICY] == null) return { ...base, policyInstalled: false, policyState: 'review-required: configuration records a policy that is not present' };
+    if (!matchesPin(files[POLICY], config.policySha256)) {
+      return { ...base, policyInstalled: false, policyState: 'review-required: Existing policy was edited' };
+    }
+    if (config.managedBy !== 'bas-more-project-memory') {
+      return { ...base, policyInstalled: false, policyState: 'review-required: configuration has a different owner', recordedManagedBy: config.managedBy ?? null };
+    }
+    return { ...base, policyInstalled: true, policyState: 'installed' };
+  }
   const policy = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/project-memory/AGENTS.template.md'), 'utf8');
   const plan = planRepository({ repository, files, policy, aliases });
   if (command === 'plan') return { ...plan, changes: plan.changes.map(({ file, beforeHash, afterHash }) => ({ file, beforeHash, afterHash })) };

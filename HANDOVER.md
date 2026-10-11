@@ -1,6 +1,7 @@
-# BAS-More/skills — Active Codex handover
+# BAS-More/skills: active Codex handover
 
-**Status:** ACTIVE (routing benchmark finished 2026-09-29; the project-memory continuation remains, see "Session 2026-09-29")
+**Status:** ACTIVE
+**Status note:** the routing benchmark finished 2026-09-29; the project-memory continuation remains. See "Session 2026-09-29".
 **Updated:** 2026-10-06 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -38,7 +39,7 @@ The repository also retains the branch `claude/mcp-tool-calling-layer-9g9q8j`. D
 
 ## Unfinished work, in priority order
 
-### P0 — recover the exact execution environment
+### P0. Recover the exact execution environment
 
 1. From a clean clone, record:
    ```bash
@@ -56,13 +57,13 @@ The repository also retains the branch `claude/mcp-tool-calling-layer-9g9q8j`. D
    ```
 3. Preserve any unique work before branch cleanup. A merged PR status is not enough; verify files and commits.
 
-### P1 — clear or accurately report the semantic-model blocker
+### P1. Clear or accurately report the semantic-model blocker
 
 The existing benchmark handover says the cloud egress proxy denied `huggingface.co`. At the start of a new session, test the blocker once using the documented bootstrap path. Do not repeatedly retry, tunnel around policy, change download hosts without review, or label a policy denial as a product failure.
 
 If the denial remains, set this handover to `BLOCKED` and record the exact command, exit status, and denial message. The user must change the cloud environment policy in the UI; a running session cannot retroactively acquire that permission.
 
-### P2 — run the semantic and control evaluations together
+### P2. Run the semantic and control evaluations together
 
 Once the embedding model is genuinely available, run from the benchmark directory using the retained commands:
 
@@ -83,11 +84,11 @@ For each run, record:
 
 A semantic run with **zero embedding requests is invalid**, regardless of its score.
 
-### P3 — interpret without tuning to the answer
+### P3. Interpret without tuning to the answer
 
 Do not tune the query set, labels, catalogue, or `hybridSearchSemanticRatio` to make semantic search look better. Report disappointing numbers plainly. The decision is whether semantics beats the measured lexical ceiling under a fixed protocol, not whether the benchmark can be optimized after observing the result.
 
-### P4 — close the research loop in the repository
+### P4. Close the research loop in the repository
 
 Update `docs/mcp-tool-routing-layer-validation.md` with:
 
@@ -116,7 +117,7 @@ checker itself. The rules it enforces, unchanged from `CLAUDE-PROJECT-RULES.md`:
 - `personal/`, `in-progress/`, and `deprecated/` skills do not appear in those public indexes;
 - each bucket README lists each skill with a link to its `SKILL.md`.
 
-Reading the list by hand is no longer the check — it is the documentation of what the
+Reading the list by hand is no longer the check; it is the documentation of what the
 check does. This list was a manual checklist up to 2026-10-06, and item 5 of the
 routing benchmark's definition of done was missed under it (see "Session 2026-09-29").
 
@@ -146,7 +147,7 @@ This handover may be marked `COMPLETE` only when:
 On every meaningful session stop, update this file and `HANDOVER-PROMPT.md` in the same commit. Keep the detailed benchmark handover for experiment-specific commands, but make this root file the single active status index.
 
 
-## Independent project-memory templates — 2026-09-14
+## Independent project-memory templates, 2026-09-14
 
 Avi separately requests the comprehensive MAH graph workflow across existing
 repositories, with an offer for future projects. This independently requested
@@ -178,7 +179,7 @@ validate the shared installer before representing this as automatic setup.
 Keep the target repository's existing instructions, hooks and source data intact.
 
 
-## Independent project-memory installation — 2026-09-14
+## Independent project-memory installation, 2026-09-14
 
 This section supersedes the installation TODOs in the earlier template-preparation
 section. It does not complete the original ACTIVE routing benchmark.
@@ -221,7 +222,7 @@ session freshness check passed with all nine views and fingerprint
 `03424bdb1964993a731980ad3c6424c63de74112bb4adecee92148ffeb6a26e0`.
 
 
-## Session 2026-09-29 — routing benchmark finished (Claude Code, branch `claude/go-bd9ae8`)
+## Session 2026-09-29: routing benchmark finished (Claude Code, branch `claude/go-bd9ae8`)
 
 **P0-P4 of the routing benchmark are done.** The semantic run happened.
 
@@ -299,7 +300,7 @@ Remaining work, in order:
 3. Optional routing follow-ups (rank fusion, larger model, current ToolHive HEAD)
    are listed under "Status" in the validation doc. None is required.
 
-## Session 2026-10-06 — publication invariants automated (Claude Code, branch `claude/repository-code-review-l65q2b`)
+## Session 2026-10-06: publication invariants automated (Claude Code, branch `claude/repository-code-review-l65q2b`)
 
 `main` was `0741c29` at session start and is unchanged by this session apart from this
 branch. The previous session's remaining item 1 (merge of `claude/plugin-json-misc`)
@@ -307,16 +308,16 @@ is **done**: PR #14 landed as `fad207d`, so all four `skills/misc/` entries are 
 `.claude-plugin/plugin.json`. Items 2 and 3 are untouched.
 
 **What changed.** The publication invariants in `CLAUDE-PROJECT-RULES.md` were
-convention-only — nothing checked them, and the only thing between an unpromoted
+convention-only: nothing checked them, and the only thing between an unpromoted
 draft and the public plugin index was whoever remembered to edit three files at once.
 They are now enforced:
 
-- `scripts/check-invariants.sh` — six checks: every skill directory has a `SKILL.md`;
+- `scripts/check-invariants.sh`, six checks: every skill directory has a `SKILL.md`;
   every public skill has a manifest entry; every public skill is linked **by name**
   from `README.md`; no `personal/`/`in-progress/`/`deprecated/` skill appears in
   either public index; every bucket README lists each of its skills with a link and a
   one-line description; every manifest entry resolves to a real skill.
-- `.github/workflows/skill-invariants.yml` — runs it on pull requests and pushes to
+- `.github/workflows/skill-invariants.yml`, which runs it on pull requests and pushes to
   `main` that touch `skills/**`, `README.md`, `.claude-plugin/plugin.json`, the
   checker, or the workflow. Those five paths are exactly the checker's inputs, so the
   path filter cannot skip a run that would change the outcome.
@@ -334,7 +335,7 @@ directory (the repository was never dirtied):
 | Mutation | Result |
 | --- | --- |
 | skill directory with no `SKILL.md` | fires (4 checks) |
-| the four `misc/` entries removed from the manifest — replays the `fad207d` bug | fires, naming all four |
+| the four `misc/` entries removed from the manifest, replaying the `fad207d` bug | fires, naming all four |
 | README link target changed away from `SKILL.md` | fires |
 | README link target correct but text does not name the skill | fires |
 | private skill added to the manifest | fires |
@@ -353,7 +354,7 @@ nothing, so the negative cases are the evidence, not the clean run.
 
 `bash -n` is clean. `shellcheck` could **not** be run: this cloud session's egress
 policy returned 403 for its binary download, so the script is behaviour-tested but
-not statically linted — worth running once in an environment that has it.
+not statically linted, so worth running once in an environment that has it.
 
 **Not changed, deliberately.** The `Status:` field at the top of this file now holds
 a prose sentence, while `00-READ-FIRST.md` defines it as the enum
