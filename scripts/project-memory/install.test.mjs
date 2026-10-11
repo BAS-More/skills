@@ -346,3 +346,89 @@ test('the CLI loads the shipped policy template and accepts it', t => {
   const out = execFileSync(process.execPath, [cli, 'plan', '--root', fixture(t), '--repository', repository], { encoding: 'utf8', stdio: 'pipe' });
   assert.equal(JSON.parse(out).outcome, 'policy-ready-to-install');
 });
+
+
+// ---------------------------------------------------------------------------
+// Three defects the installer carried silently: a permission downgrade that git
+// cannot show in review, a status command that answered from existence rather
+// than integrity, and a recorded choice that could not be told apart from one
+// copied out of another repository.
+// ---------------------------------------------------------------------------
+
+test('install preserves the mode of files it rewrites and does not create owner-only instruction files', { skip: process.platform === 'win32' ? 'POSIX modes only' : false }, t => {
+  const root = fixture(t);
+  const previous = process.umask(0o022);
+  t.after(() => process.umask(previous));
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), 'Read HANDOVER first.\n', { mode: 0o644 });
+  fs.chmodSync(path.join(root, 'AGENTS.md'), 0o644);
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'), 'Character layer.\n');
+  fs.chmodSync(path.join(root, 'CLAUDE.md'), 0o664);
+  // A file the installer never touches, so the expected mode for a NEW file is measured
+  // rather than assumed from the umask arithmetic.
+  fs.writeFileSync(path.join(root, 'control.txt'), 'untouched\n');
+  const controlMode = fs.statSync(path.join(root, 'control.txt')).mode & 0o777;
+
+  const result = applyPlan(root, makePlan(root), path.join(root, 'backups'));
+
+  const modeOf = f => fs.statSync(path.join(root, f)).mode & 0o777;
+  // The whole defect: these two were rewritten from 644 and 664 to 600, and git models
+  // only 100644 against 100755, so review showed " M AGENTS.md" and nothing else.
+  assert.equal(modeOf('AGENTS.md'), 0o644, 'AGENTS.md kept its mode');
+  assert.equal(modeOf('CLAUDE.md'), 0o664, 'CLAUDE.md kept its mode');
+  assert.equal(modeOf(POLICY), controlMode, 'a new policy file is as readable as an ordinary write');
+  assert.equal(modeOf(CONFIG), controlMode, 'a new config file is as readable as an ordinary write');
+  // The journal holds the before-images of every file being replaced, so it stays
+  // owner-only whatever the umask is.
+  assert.equal(fs.statSync(result.journalPath).mode & 0o777, 0o600, 'the recovery journal stays owner-only');
+});
+
+test('status reports an edited policy as review-required instead of installed', t => {
+  const root = fixture(t);
+  applyPlan(root, makePlan(root), path.join(root, 'backups'));
+  const cli = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'install.mjs');
+  const statusOf = r => JSON.parse(execFileSync(process.execPath, [cli, 'status', '--root', r], { encoding: 'utf8', stdio: 'pipe' }));
+
+  const healthy = statusOf(root);
+  assert.equal(healthy.policyInstalled, true);
+  assert.equal(healthy.policyState, 'installed');
+
+  // Still starts with the approved heading, so a prefix check would miss it; only the
+  // recorded pin can tell. This is the input that used to report a clean install.
+  fs.writeFileSync(path.join(root, POLICY), '# Comprehensive project memory\narbitrary unapproved text\n');
+  const edited = statusOf(root);
+  assert.equal(edited.policyInstalled, false);
+  assert.match(edited.policyState, /Existing policy was edited/);
+  // Exit 0 is deliberate: a sweep over several repositories must not stop at one.
+});
+
+test('status reports a tree with no memory configuration as not-installed', t => {
+  const root = fixture(t);
+  const cli = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'install.mjs');
+  const status = JSON.parse(execFileSync(process.execPath, [cli, 'status', '--root', root], { encoding: 'utf8', stdio: 'pipe' }));
+  assert.deepEqual(status, { repository: null, policyInstalled: false, policyState: 'not-installed', graphReadiness: 'unknown' });
+});
+
+test('a declined config recorded for another repository is honored but reports the foreign record', () => {
+  const foreign = planRepository({
+    repository,
+    files: { [CONFIG]: JSON.stringify({ choice: 'declined', repository: 'Someone-Else/other-repo', managedBy: 'other-tool' }) },
+    policy
+  });
+  assert.equal(foreign.changes.length, 0, 'the recorded choice is still honored');
+  assert.equal(foreign.outcome, 'preserved-declined-foreign-record');
+  assert.equal(foreign.recordedRepository, 'Someone-Else/other-repo');
+  assert.equal(foreign.recordedManagedBy, 'other-tool');
+
+  // The bare case must stay exactly as it was: INSTALL.md promises declined and deferred
+  // choices are preserved, and the test that pins that promise asserts a plain outcome.
+  const local = planRepository({ repository, files: { [CONFIG]: JSON.stringify({ choice: 'declined' }) }, policy });
+  assert.deepEqual(local, { repository, outcome: 'preserved-declined', changes: [] });
+
+  const deferred = planRepository({
+    repository,
+    files: { [CONFIG]: JSON.stringify({ choice: 'deferred', repository: 'Someone-Else/other-repo' }) },
+    policy
+  });
+  assert.equal(deferred.outcome, 'preserved-deferred-foreign-record');
+  assert.equal(deferred.recordedManagedBy, undefined, 'only the fields that actually differ are reported');
+});

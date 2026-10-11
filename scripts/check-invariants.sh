@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Verifies the publication invariants stated in CLAUDE-PROJECT-RULES.md.
+# Verifies the publication, documentation and invocation invariants stated in
+# CLAUDE-PROJECT-RULES.md and .agents/invocation.md, plus the session-entry gate that
+# 00-READ-FIRST.md defines.
 #
 # Those rules decide what the outside world sees: a skill in a PUBLIC bucket
 # must be reachable from the top-level README and the plugin manifest, and a
@@ -30,6 +32,19 @@ PRIVATE_BUCKETS=(personal in-progress deprecated)
 
 MANIFEST=".claude-plugin/plugin.json"
 ROOT_README="README.md"
+# The router that must name every user-invoked skill.
+ASK_MATT="skills/engineering/ask-matt/SKILL.md"
+# Buckets whose skills carry a human-facing docs page. The docs tree mirrors
+# these two and only these two; see CLAUDE-PROJECT-RULES.md.
+DOCUMENTED_BUCKETS=(engineering productivity)
+# The fixed frame .agents/writing-docs.md says appears on EVERY page. Deliberately not
+# the four sections CLAUDE-PROJECT-RULES.md lists: writing-docs.md, which that rule defers
+# to for the template, says to omit "Common questions" where the question hunt came up
+# thin and "It's working if" where the tells stay vague, and warns that padding a thin
+# page out to match a rich one fills the section with questions nobody has. Requiring all
+# four made this checker fail a page that is correct by the repository's own template, and
+# the fix for that false positive is this list, not an edit to the page.
+REQUIRED_DOC_SECTIONS=("What it does" "When to reach for it" "Where it fits")
 
 # Shortest run of prose that counts as the "one-line description" a bucket
 # README must carry beside each link. Low enough to never argue with a terse
@@ -96,7 +111,7 @@ in_manifest() {
 }
 
 # True if $file contains a markdown link whose TARGET is this skill's SKILL.md
-# and whose TEXT mentions the skill name — rule 3 ("must link the skill name to
+# and whose TEXT mentions the skill name: rule 3 ("must link the skill name to
 # its SKILL.md") is about the link text, not merely the presence of the path.
 links_skill() {
   local file="$1" bucket="$2" skill="$3" path_re link
@@ -105,7 +120,7 @@ links_skill() {
     *)              path_re="\\./$skill/SKILL\\.md" ;;
   esac
   while IFS= read -r link; do
-    # Link text is everything between the outer [ ] — if it names the skill,
+    # Link text is everything between the outer [ ]. If it names the skill,
     # this link satisfies the rule.
     case "${link%%](*}" in
       *"$skill"*) return 0 ;;
@@ -129,7 +144,7 @@ for dir in skills/*/; do
   for b in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
     [ "$b" = "$bucket" ] && known=1 && break
   done
-  [ "$known" -eq 1 ] || fail "skills/$bucket is in neither PUBLIC_BUCKETS nor PRIVATE_BUCKETS in $(basename "$0") — classify it (and add it to the right public indexes) rather than leaving it unchecked"
+  [ "$known" -eq 1 ] || fail "skills/$bucket is in neither PUBLIC_BUCKETS nor PRIVATE_BUCKETS in $(basename "$0"). Classify it (and add it to the right public indexes) rather than leaving it unchecked"
 done
 
 echo "1. every skill directory has a SKILL.md"
@@ -246,10 +261,190 @@ for bucket in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
     sed -E 's|^\]\(\./||; s|/SKILL\.md\)$||' | sort -u || true)
 done
 
+echo "8. every promoted skill has a docs page carrying the fixed frame"
+# The docs-page contract (CLAUDE-PROJECT-RULES.md, and .agents/writing-docs.md for the
+# template) was stated and checked by nothing. A page marked archived is exempt, per
+# writing-docs.md, which keeps the page of a removed skill.
+for bucket in "${DOCUMENTED_BUCKETS[@]}"; do
+  while IFS= read -r skill; do
+    [ -n "$skill" ] || continue
+    page="docs/$bucket/$skill.md"
+    if [ ! -f "$page" ]; then
+      fail "skills/$bucket/$skill has no docs page at $page"
+      continue
+    fi
+    grep -qiE '^>?[[:space:]]*(archived|\*\*archived)' "$page" && continue
+    for section in "${REQUIRED_DOC_SECTIONS[@]}"; do
+      grep -qF "$section" "$page" || fail "$page has no '$section' section"
+    done
+  done < <(skills_in "$bucket")
+done
+
+echo "9. every skill carries an agents/openai.yaml beside its SKILL.md"
+# .agents/invocation.md: every skill has one, holding the Codex UI metadata and, for a
+# user-invoked skill, the policy block that pairs with disable-model-invocation. One skill
+# was missing it, which is invisible until a Codex session fails to show the skill.
+for bucket in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
+  while IFS= read -r skill; do
+    [ -n "$skill" ] || continue
+    [ -f "skills/$bucket/$skill/SKILL.md" ] || continue
+    [ -f "skills/$bucket/$skill/agents/openai.yaml" ] ||
+      fail "skills/$bucket/$skill has no agents/openai.yaml beside its SKILL.md"
+  done < <(skills_in "$bucket")
+done
+
+echo "10. the two invocation declarations agree for every skill"
+# "A skill is user-invoked in both harnesses or neither" (.agents/invocation.md). The two
+# declarations live in different files and different formats, so they can disagree
+# silently: a skill the human alone should reach stays model-reachable in the other
+# harness, which is the failure mode the rule exists to prevent, not a tidiness point.
+for bucket in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
+  while IFS= read -r skill; do
+    [ -n "$skill" ] || continue
+    md="skills/$bucket/$skill/SKILL.md"
+    yaml="skills/$bucket/$skill/agents/openai.yaml"
+    if [ ! -f "$md" ] || [ ! -f "$yaml" ]; then continue; fi
+    if grep -qE '^disable-model-invocation:[[:space:]]*true' "$md"; then md_mode=user; else md_mode=model; fi
+    if grep -qE 'allow_implicit_invocation:[[:space:]]*false' "$yaml"; then yaml_mode=user; else yaml_mode=model; fi
+    [ "$md_mode" = "$yaml_mode" ] ||
+      fail "skills/$bucket/$skill is $md_mode-invoked in SKILL.md but $yaml_mode-invoked in agents/openai.yaml, so one harness can reach it and the other cannot"
+  done < <(skills_in "$bucket")
+done
+
+echo "11. ask-matt names every user-invoked skill"
+# CLAUDE-PROJECT-RULES.md: ask-matt is the router over the skills a human reaches by
+# name, so a user-invoked skill it never mentions is a router that lies. Scoped to
+# user-invoked skills deliberately: ask-matt's own README entry says it routes those, and
+# a model-invoked skill is reached by the model when the task fits rather than chosen from
+# a list.
+if [ ! -f "$ASK_MATT" ]; then
+  fail "$ASK_MATT is missing, so no router covers the user-invoked skills"
+else
+  for bucket in "${PUBLIC_BUCKETS[@]}"; do
+    while IFS= read -r skill; do
+      [ -n "$skill" ] || continue
+      [ "$skill" = "ask-matt" ] && continue
+      md="skills/$bucket/$skill/SKILL.md"
+      [ -f "$md" ] || continue
+      grep -qE '^disable-model-invocation:[[:space:]]*true' "$md" || continue
+      grep -qF "$skill" "$ASK_MATT" ||
+        fail "user-invoked skills/$bucket/$skill is named nowhere in $ASK_MATT"
+    done < <(skills_in "$bucket")
+  done
+fi
+
+echo "12. no em-dash in the repository's own prose"
+# CLAUDE-PROJECT-RULES.md states this without exception and nothing checked it, so it
+# rotted: the rule names SKILL.md files, docs, READMEs, CHANGELOG.md, ADRs, changesets and
+# code comments, and every one of those classes had violations.
+#
+# Scope, and why it is not everything: the dated records (CHANGELOG.md, the handover pair,
+# and the routing-benchmark write-ups) are a historical account, and rewriting their
+# sentences would edit the record rather than the style. They are listed here so the
+# exemption is a decision with a reason on it instead of a gap, and clearing them is a
+# separate piece of work. Generated benchmark output and data modules are not prose at all.
+EM_DASH=$(printf '\xe2\x80\x94')
+EM_DASH_EXEMPT=(
+  CHANGELOG.md
+  "docs/mcp-tool-routing-layer-evaluation.md"
+  "docs/mcp-tool-routing-layer-validation.md"
+  "docs/mcp-routing-benchmark/"
+)
+em_dash_exempt() {
+  local f="$1" e
+  for e in "${EM_DASH_EXEMPT[@]}"; do
+    case "$f" in "$e"|"$e"*) return 0 ;; esac
+  done
+  return 1
+}
+# `git ls-files` is the right list in a checkout (it skips build output and anything
+# ignored), but it returns nothing outside one, which would make this rule pass having
+# read no files at all. That is the same silent-no-op shape as rule 1's floor, so there is
+# a `find` fallback and a floor, and the rule says so rather than quietly checking nothing.
+prose_files() {
+  local listed
+  listed="$(git ls-files 2>/dev/null || true)"
+  if [ -n "$listed" ]; then
+    printf '%s\n' "$listed"
+    return 0
+  fi
+  find . -type f \( -name '*.md' -o -name '*.sh' -o -name '*.mjs' -o -name '*.js' \
+    -o -name '*.ts' -o -name '*.yml' -o -name '*.yaml' \) -not -path './.git/*' |
+    sed 's|^\./||'
+}
+em_dash_scanned=0
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  em_dash_exempt "$f" && continue
+  em_dash_scanned=$((em_dash_scanned + 1))
+  case "$f" in
+    # Prose files, judged whole.
+    *.md)
+      while IFS= read -r hit; do
+        fail "${f}:${hit%%:*} uses an em-dash; rewrite the sentence (comma, colon, period, parentheses or a conjunction) rather than substituting a character"
+      done < <(grep -n -F "$EM_DASH" "$f" || true)
+      ;;
+    # Code: only the comments are prose. The checker's own description-stripping sed
+    # carries a literal em-dash as DATA, which is code and correctly not flagged.
+    #
+    # A comment line is matched by anchored regex rather than by case globbing. The
+    # first version of this rule used a `*"*"*` glob for a JSDoc continuation line,
+    # which matches ANY line containing an asterisk, and it duly flagged that sed's
+    # character class. A rule that cannot tell code from prose would push the next
+    # reader to mangle working code to appease it.
+    *.sh|*.mjs|*.js|*.ts|*.yml|*.yaml)
+      while IFS= read -r hit; do
+        if printf '%s' "${hit#*:}" | grep -qE '^[[:space:]]*(#|//|/\*|\*)'; then
+          fail "${f}:${hit%%:*} uses an em-dash in a comment; rewrite the sentence rather than substituting a character"
+        fi
+      done < <(grep -n -F "$EM_DASH" "$f" || true)
+      ;;
+  esac
+done < <(prose_files)
+[ "$em_dash_scanned" -gt 0 ] || fail "rule 12 found no files to scan, so it checked nothing (is this a checkout?)"
+
+echo "13. every instruction file an entry point names either exists or is marked 'when present'"
+# The gate in 00-READ-FIRST.md is only as good as the documents it points at. AGENTS.md
+# told a reader to follow the rules in a file that has never existed at any revision,
+# five lines after qualifying the same filename with "when present". A Codex session
+# entering through AGENTS.md therefore reached none of the rules that actually govern this
+# fork. A dangling pointer in an entry point is worse than a missing rule, because the
+# reader believes they have read the rules.
+for entry in 00-READ-FIRST.md AGENTS.md CLAUDE.md; do
+  [ -f "$entry" ] || continue
+  while IFS= read -r numbered; do
+    lineno="${numbered%%:*}"
+    line="${numbered#*:}"
+    while IFS= read -r target; do
+      [ -n "$target" ] || continue
+      [ -f "$target" ] && continue
+      case "$line" in *"when present"*) continue ;; esac
+      fail "$entry:$lineno points at '$target', which does not exist and is not marked 'when present'"
+    done < <(printf '%s\n' "$line" | grep -oE '\]\([^)]+\.md\)' | sed -E 's/^\]\(//; s/\)$//' || true)
+  done < <(grep -nE '\]\([^)]+\.md\)' "$entry" || true)
+done
+
+echo "14. HANDOVER.md's Status is one of the three values the gate reads"
+# 00-READ-FIRST.md says this field controls the session gate and defines exactly three
+# values. It held a prose sentence instead, which no automated reader can parse, so the
+# gate it controls was not machine-checkable at all.
+if [ -f HANDOVER.md ]; then
+  status_line="$(grep -m1 -E '^\*\*Status:\*\*|^Status:' HANDOVER.md || true)"
+  if [ -z "$status_line" ]; then
+    fail "HANDOVER.md has no Status line, which 00-READ-FIRST.md gates the session on"
+  else
+    status_value="$(printf '%s' "$status_line" | sed -E 's/^\*\*Status:\*\*[[:space:]]*//; s/^Status:[[:space:]]*//')"
+    case "$status_value" in
+      ACTIVE|BLOCKED|COMPLETE) ;;
+      *) fail "HANDOVER.md's Status is '$status_value'; 00-READ-FIRST.md defines exactly ACTIVE, BLOCKED or COMPLETE, and anything else cannot be read by the gate" ;;
+    esac
+  fi
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
-  echo "OK — all publication invariants hold."
+  echo "OK: all publication invariants hold."
   exit 0
 fi
-printf 'FAILED — %d violation(s). See CLAUDE-PROJECT-RULES.md for the rules.\n' "$failures"
+printf 'FAILED: %d violation(s). See CLAUDE-PROJECT-RULES.md for the rules.\n' "$failures"
 exit 1

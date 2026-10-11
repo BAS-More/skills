@@ -1,0 +1,3 @@
+interface:
+  display_name: "Phone Backup Before Reset"
+  short_description: "Pre-wipe backup checklist for a phone"

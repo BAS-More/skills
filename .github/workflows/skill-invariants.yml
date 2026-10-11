@@ -3,7 +3,7 @@ name: Skill invariants
 # convention-only until now: a promoted skill must be reachable from both
 # public indexes, an unpromoted one from neither. Those rules span three file
 # sets (skills/, README.md, the plugin manifest), so any one of them can be
-# edited into an inconsistent state on its own — which is how the four `misc/`
+# edited into an inconsistent state on its own, which is how the four `misc/`
 # skills went unlisted in the manifest until a later pass caught it.
 #
 # Every path below is an input the checker reads, so the filter never skips a
@@ -15,8 +15,10 @@ on:
       - 'skills/**'
       - 'README.md'
       - '.claude-plugin/plugin.json'
+      - 'package.json'
       - 'scripts/check-invariants.sh'
       - 'scripts/check-invariants.test.mjs'
+      - 'scripts/sync-plugin-version.mjs'
       - '.github/workflows/skill-invariants.yml'
   push:
     branches: [main]
@@ -24,8 +26,10 @@ on:
       - 'skills/**'
       - 'README.md'
       - '.claude-plugin/plugin.json'
+      - 'package.json'
       - 'scripts/check-invariants.sh'
       - 'scripts/check-invariants.test.mjs'
+      - 'scripts/sync-plugin-version.mjs'
       - '.github/workflows/skill-invariants.yml'
 permissions:
   contents: read
@@ -47,3 +51,10 @@ jobs:
       # not just the byte-exact one. Node is a test-only need (it builds the
       # fixture trees) and ships on the runner.
       - run: node --test scripts/check-invariants.test.mjs
+      # The two manifests carry the same version, and nothing checked that they
+      # agreed. `--check` existed and had no callers: `npm run version` writes the
+      # value, release.yml is guarded off on this fork, and neither path filter
+      # named package.json, so a hand-edited version could ship out of step with
+      # the published plugin and no job would notice. Both files are now in the
+      # filters above, so this step runs exactly when either can change.
+      - run: npm run check-plugin-version

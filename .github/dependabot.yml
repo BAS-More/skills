@@ -1,0 +1,38 @@
+# Dependency scanning for this repository, which had none.
+#
+# WHY IT WAS NEEDED. `npm audit` reported 18 advisories here, 16 of them high, all
+# arriving through the @changesets dev toolchain, which is this repository's only
+# declared dependency. Nothing watched for them: no workflow audits and there was no
+# Dependabot configuration at any path, so the count could only grow. Both sibling
+# repositories gate this and both pass, so the gap was this repository's alone.
+#
+# The published plugin ships Markdown and shell scripts, not these packages, so no
+# advisory here reaches a consumer. What it does reach is a maintainer's machine and
+# this repository's own CI, which is reason enough to keep it at zero.
+#
+# Modelled on byahad's, which is in service and proven. Majors are ignored on purpose:
+# a breaking change has to be read, not merged. There is deliberately no auto-merge
+# here, unlike byahad's: that repository earned it with a required status check and
+# enforce_admins, and this one has neither yet.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      changesets:
+        patterns: ["@changesets/*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # The actions themselves are a supply-chain surface. They are pinned to commit
+  # SHAs rather than tags, because a tag is a mutable pointer and repointing one is
+  # arbitrary code execution in CI, so Dependabot is what keeps those pins from
+  # rotting into stale unpatched versions.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
