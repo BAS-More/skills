@@ -6,31 +6,27 @@ name: Skill invariants
 # edited into an inconsistent state on its own, which is how the four `misc/`
 # skills went unlisted in the manifest until a later pass caught it.
 #
-# Every path below is an input the checker reads, so the filter never skips a
-# run that could change the outcome: editing README.md alone can break an
-# invariant just as surely as adding a skill.
+# NO PATH FILTER, deliberately, and this is a correction rather than a preference.
+#
+# There was one, listing every input the checker read, with a comment promising that
+# "the filter never skips a run that could change the outcome". That promise held while
+# the checker read three file sets. It stopped holding the moment the checker grew rules
+# that read the rest of the repository, and nobody noticed, because a filter that is too
+# narrow fails by staying silent.
+#
+# It was caught by the gap doing exactly what it does: PR #22 changed HANDOVER.md, whose
+# Status field rule 14 exists to validate, and this job did not run at all. Rules 8, 12,
+# 13 and 14 read docs/, the entry-point documents, HANDOVER.md, and in rule 12's case
+# every tracked prose file and every code comment. Enumerating that is enumerating the
+# repository, and an enumeration is exactly the thing that falls behind the next rule.
+#
+# So the filter is gone instead of extended. The job takes 15 seconds, so there is no
+# cost worth protecting, and running always removes a whole class of defect permanently:
+# a new rule can never again read a file the trigger does not watch.
 on:
   pull_request:
-    paths:
-      - 'skills/**'
-      - 'README.md'
-      - '.claude-plugin/plugin.json'
-      - 'package.json'
-      - 'scripts/check-invariants.sh'
-      - 'scripts/check-invariants.test.mjs'
-      - 'scripts/sync-plugin-version.mjs'
-      - '.github/workflows/skill-invariants.yml'
   push:
     branches: [main]
-    paths:
-      - 'skills/**'
-      - 'README.md'
-      - '.claude-plugin/plugin.json'
-      - 'package.json'
-      - 'scripts/check-invariants.sh'
-      - 'scripts/check-invariants.test.mjs'
-      - 'scripts/sync-plugin-version.mjs'
-      - '.github/workflows/skill-invariants.yml'
 permissions:
   contents: read
 jobs:

@@ -11,14 +11,23 @@
 > `Skill invariants` workflow runs it on every PR that touches `skills/`,
 > `README.md`, or the manifest. See `HANDOVER.md` → "Session 2026-10-06".
 >
+> **Update 2026-10-11:** items 2 and 3 below are **done**, and the invariant checker
+> now enforces all fifteen rules the repository states rather than eight. PR #21 is
+> merged as `5951462`. See `HANDOVER.md` -> "Session 2026-10-11" for the measurements.
+> `Status:` is now the bare enum and rule 14 enforces it, so the session gate is
+> machine-checkable. `shellcheck` ran clean at `-S style` on all three shell scripts:
+> the egress denial that blocked it no longer applies in this environment.
+>
 > What remains:
-> 1. The project-memory continuation sections at the end of this prompt.
-> 2. Normalise the `Status:` field in `HANDOVER.md` to the enum
->    `ACTIVE | BLOCKED | COMPLETE` that `00-READ-FIRST.md` defines and gates on; it
->    currently holds a prose sentence that an automated reader cannot parse.
-> 3. Run `shellcheck` over `scripts/check-invariants.sh`. The cloud session that
->    wrote it was denied the binary download by egress policy, so it is
->    behaviour-tested but not statically linted.
+> 1. The project-memory continuation sections at the end of this prompt. Untouched.
+> 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
+> 3. ~~Run `shellcheck` over `scripts/check-invariants.sh`~~ done, zero findings.
+> 4. Two owner decisions, neither of which is more work:
+>    `CLAUDE-PROJECT-RULES.md` and `.agents/writing-docs.md` disagree about whether a
+>    docs page must carry four sections or may omit two when thin (rule 8 enforces only
+>    the fixed frame, and a test pins the omission as legitimate, so nothing is blocked
+>    on this); and the `braces` advisory needs a major bump read rather than a lockfile
+>    edit. Dependabot now raises both.
 
 You are continuing Codex thread `01a03bc7-0d2a-75e2-8c3e-c9d125ded17e` in `https://github.com/BAS-More/skills`.
 
@@ -39,7 +48,11 @@ Primary objective: finish the semantic MCP/tool-routing evaluation without tunin
 - Record top-1, empty-result rate, embedding calls, overhead, exclusions, commit, and configuration.
 - Update `docs/mcp-tool-routing-layer-validation.md` with a reproducible conclusion.
 - Maintain the skill bucket, README, and plugin-manifest invariants. Verify with
-  `./scripts/check-invariants.sh`, not by reading the rules by hand.
+  `./scripts/check-invariants.sh`, not by reading the rules by hand. Since 2026-10-11
+  it also checks the docs-page frame, `agents/openai.yaml` presence and invocation-mode
+  agreement, `ask-matt`'s coverage of user-invoked skills, the no-em-dash rule, every
+  entry point's pointers, and `HANDOVER.md`'s `Status` field. If a rule here reads as
+  convention, check whether the script already enforces it before trusting your memory.
 
 Do not kill processes with broad `pkill -f`, commit caches/secrets, or report a score before validating the scorer.
 
