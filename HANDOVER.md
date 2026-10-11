@@ -1,8 +1,8 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29; the project-memory continuation remains. See "Session 2026-09-29".
-**Updated:** 2026-10-06 (Australia/Melbourne)
+**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation. See "Session 2026-10-11".
+**Updated:** 2026-10-11 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -221,6 +221,108 @@ receipts. Repository CI remains authoritative for their remaining gates. MAH's l
 session freshness check passed with all nine views and fingerprint
 `03424bdb1964993a731980ad3c6424c63de74112bb4adecee92148ffeb6a26e0`.
 
+
+## Session 2026-10-11: the stated invariants are enforced, and the audit gate exists (Claude Code, branch `claude/repository-code-review-l65q2b`, PR #21 merged as `5951462`)
+
+Two commits, `023b64b` and `720dbde`, merged via PR #21. Both are on `main`.
+
+### What was wrong
+
+`scripts/check-invariants.sh` enforced **eight** rules while `CLAUDE-PROJECT-RULES.md`
+and `.agents/invocation.md` state **fifteen**. Three of the seven unenforced ones had
+already drifted, which is the argument for enforcing the other four:
+
+| Rule | Was it holding? |
+|---|---|
+| 8. a docs page per promoted skill, carrying the fixed frame | yes |
+| 9. an `agents/openai.yaml` beside every `SKILL.md` | **no** |
+| 10. the two invocation declarations agree | yes |
+| 11. `ask-matt` names every user-invoked skill | yes |
+| 12. no em-dash in the repository's own prose | **no**, 66 across six files |
+| 13. an entry point's pointers exist or say "when present" | **no** |
+| 14. `HANDOVER.md`'s `Status` is one of the three gate values | **no** |
+
+`AGENTS.md:29` told a reader to follow the rules in `AGENTS-PROJECT-RULES.md`, which
+has never existed at any revision, five lines after qualifying the same filename with
+"when present". Every Codex session entering through `AGENTS.md` therefore reached none
+of the rules that govern this fork. It now uses the generic form `CLAUDE.md` already
+had, and lists `CLAUDE-PROJECT-RULES.md` in its read order.
+
+The project-memory installer carried three defects silently. `atomic()` created its
+temp file at `0600` and never restored the destination's mode, so installing rewrote
+`AGENTS.md` from 644 and `CLAUDE.md` from 664 to owner-only; git models only `100644`
+against `100755`, so the downgrade was invisible in review while `INSTALL.md` promised
+no broad permission changes. `status` answered from existence, so a tree whose
+`POLICY.md` had been edited reported `policyInstalled: true` and exit 0 while `plan` on
+the same tree refused. And a declined choice recorded for another repository produced
+output byte-identical to a local decision.
+
+`sync-plugin-version.mjs --check` had no caller at all: `npm run version` writes rather
+than checks, this fork guards `release.yml` off, and neither path filter named
+`package.json`.
+
+There was no dependency audit and no `dependabot.yml` at any path, while `npm audit`
+reported 18 advisories, 16 of them high, through the `@changesets` toolchain. Both
+sibling repositories gate this and both pass.
+
+### Commands and results
+
+```
+npm test                          61 passed, 0 failed   (was 35)
+./scripts/check-invariants.sh     exit 0, 15 rules      (was 8)
+npm run check-plugin-version      exit 0, now a CI step (was reachable from no job)
+shellcheck -S style x3 scripts    exit 0, zero findings
+npm audit                         3 vulnerable packages -> 2
+```
+
+CI on the merged head: `invariants`, `installer (ubuntu-latest)`,
+`installer (windows-latest)` and both Socket Security checks, all green. The Windows
+run matters: the permission test is POSIX-only and skips there, so a green Windows job
+is what shows the `fchmod` change did not break the platform with no such modes.
+
+Every new rule was mutated and the suite re-run. Each mutation killed exactly its own
+test and nothing else, so none of the new tests is vacuous.
+
+### Two handover items closed
+
+- **`Status:` normalised** to the enum `00-READ-FIRST.md` gates on. The sentence it
+  held moved to a `Status note:` line, and rule 14 now enforces the field, so the gate
+  is machine-checkable for the first time.
+- **`shellcheck` run.** The previous session recorded it as blocked by egress policy.
+  `apt-get install shellcheck` succeeded here, and all three shell scripts are clean at
+  `-S style`, which is stricter than the default. With `-o all` it emits style
+  preferences (`${VAR}` braces, `[[ ]]` over `[ ]`); those are opt-in pedantry and no
+  rule in this repository asks for them.
+
+### Two things that need an owner decision, not more work
+
+1. **`CLAUDE-PROJECT-RULES.md` and `.agents/writing-docs.md` contradict each other.**
+   The first says a finished docs page carries four sections. The second, which the
+   first defers to for the template, says to omit "Common questions" where the question
+   hunt is thin and warns that padding a thin page out fills the section with questions
+   nobody has. `docs/productivity/wait-what.md` omits it correctly. An earlier pass of
+   this review called that page non-compliant and was wrong, and the first version of
+   rule 8 duly failed it. Rule 8 now enforces only the fixed frame (`What it does`,
+   `When to reach for it`, `Where it fits`), which all 28 pages carry, and a test pins
+   that a page may omit "Common questions" so the rule cannot be tightened back into a
+   false positive. Choosing which document yields is not a decision this session should
+   make.
+2. **`braces` (high, GHSA-vfj7-8cjw-p6xm)** reports its fix only via
+   `npm audit fix --force`, meaning a major bump of what pulls it in. That is a
+   changelog to read, not a lockfile edit. `sprintf-js` (moderate,
+   GHSA-hp3w-g68c-fv3c) claims an in-range fix that this refresh did not reach.
+   Dependabot will now raise both.
+
+### One incidental finding worth keeping
+
+`package-lock.json`'s own root version read `0.0.0` while `package.json` and
+`.claude-plugin/plugin.json` both said `1.3.1`. All three agree now. The version check
+compares the first two; the lockfile is a third copy it does not cover.
+
+### Still open
+
+The project-memory continuation, unchanged and untouched by this session. See the
+sections dated 2026-09-14 below.
 
 ## Session 2026-09-29: routing benchmark finished (Claude Code, branch `claude/go-bd9ae8`)
 
