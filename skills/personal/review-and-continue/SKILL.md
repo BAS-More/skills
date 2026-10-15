@@ -1,0 +1,73 @@
+---
+name: review-and-continue
+description: Re-establishes a verified baseline for an existing project before more work is done. It inventories every repo, worktree, branch, stash, recent Claude session, doc and knowledge graph; secures uncommitted work through PRs; finds doc-vs-code drift and remediates it with the user's decisions; gets a cross-vendor adversarial review; then hands a confirmed to-do list to /goal. Use when resuming a project after a break, on a new machine or account, or when the user says "review and continue", "pick up where we left off", "where are we on <project>", or "resume <project>".
+argument-hint: "[project-folder | repo-url]..."
+allowed-tools: Agent, AskUserQuestion, Skill, ToolSearch, Workflow, Bash, PowerShell, Read, Write, Edit, Glob, Grep
+---
+
+# /review-and-continue
+
+Answers one question before any building starts: **what is actually true about this project right now,
+and what is the agreed path forward?** Sessions, docs and memory are *claims*. The repo, the tests and
+the live services are *evidence*. The skill turns claims into a verified baseline.
+
+## Quick start
+
+```
+/review-and-continue C:\Dev\ComWatch C:\Dev\sentinel
+/review-and-continue https://github.com/org/repo     # not on disk: asks where to clone
+/review-and-continue                                 # uses the project named earlier, else confirms the cwd repo, else asks
+```
+
+Scripts (Node ≥ 18, no deps, read-only, JSON on stdout). `S` = this skill's `scripts/` dir.
+Write their output to the session scratchpad (`$SCRATCH`), never into a repo.
+
+| Script | What it proves |
+|---|---|
+| `node S/repo-state.mjs <root>... [--no-gh]` | One entry per repository (worktrees nested): dirty, untracked, stashes (by SHA), no-upstream / gone / ahead branches, detached commits, pushed-but-no-PR branches, graph staleness → `attention[]`. Exit 1 = no repo found |
+| `node S/sessions.mjs <root>... --days 30` | Recent Claude Code sessions for the project and all its worktrees: title, first/last human prompt, branch |
+| `node S/doc-refs.mjs <repo>...` | Paths and `npm run` targets that docs reference but do not exist, ranked high/medium/low. Exit 1 = not a git work tree |
+
+Self-test first on a new machine: `node --test "S/test/*.test.mjs"`. A failure means the tooling is broken,
+not the project. `repo-state` (or its manual git fallback) must work before anything is committed or pushed;
+without it the run is read-only. A failing `sessions` / `doc-refs` only marks its outputs UNVERIFIED.
+
+## Workflow
+
+Copy this checklist into the task list. Full instructions per phase: [PHASES.md](PHASES.md).
+
+```
+- [ ] P0 Scope roots → discover repos + remotes → STOP: scope, model per tier (MODELS.md), external-review consent
+- [ ] P1 Inventory: scripts + handover docs + project memory (all tagged [CLAIM])
+- [ ] P2 Secure work plan → STOP: approve → branch, scan, commit, push, draft PRs (never merge)
+- [ ] P3 Digest recent sessions; verify each claim against the repo
+- [ ] P4 Baseline: refresh the project's own graph engine, run safe build + tests, write BASELINE.md
+- [ ] P5 Drift register: docs/specs/plans vs code, with file:line evidence
+- [ ] P6 STOP: decision per drift item + PRs to merge → merge → continuity branch(es) on the post-merge SHA
+- [ ] P7 Remediate (TDD) on the continuity branch; update docs, graph, memory stores, project to-do
+- [ ] P8 Draft TODO.md → alignment gate → cross-vendor adversarial review of everything (max 3 rounds)
+- [ ] P9 STOP: open questions + memory write-back approval → continuity PR(s) → /goal mission line
+```
+
+Artifacts: `BASELINE.md`, `DRIFT-REGISTER.md`, `REMEDIATION-PLAN.md`, `REVIEW.md`, `TODO.md`, `DECISIONS.md`,
+`MEMORY-UPDATES.md`. They live in `$SCRATCH/continuity/` until P6, then in `docs/continuity/<RUN>/` on branch
+`continuity/<RUN>` (own worktree, cut from the post-merge default branch). Templates: [TEMPLATES.md](TEMPLATES.md).
+
+## Hard rules
+
+1. **Evidence over memory.** A finding without a command output, file:line or URL is a hypothesis; label it so.
+   Zero findings from a check that could not run is UNVERIFIED, never "clean".
+2. **Never merge, force-push, reset, drop or pop a stash, or delete a branch/worktree** without the user's explicit
+   OK naming the item. "Secure the work" means *a PR exists*, not *it is merged*.
+3. **Each repo's own rules win** (CLAUDE.md / AGENTS.md: base branch, branch names, forbidden remotes, PR flow).
+4. **Egress is scanned and consented.** gitleaks/trufflehog on every push range, bundle, artifact and PAL payload
+   (PHASES.md § Secret scan); repo content goes to another vendor only as far as the P0 per-repo consent allows.
+   With no scanner, egress happens only if the user explicitly accepts it, and is logged as UNSCANNED-ACCEPTED.
+5. **Do not disturb anyone's working state.** Never commit inside or switch the branch of an existing checkout: dirty
+   work is copied into a rescue worktree. Skip checkouts used by a session active in the last 2 hours. Re-check
+   branch, HEAD, status and index.lock right before every mutation.
+6. **Stops are P0, P2, P6, P9**, plus anything crucial (irreversible, money, credentials, product direction).
+   Memory stores (avios-context, total-recall, Graphiti) are written only after the P9 approval.
+   Every other question goes to `DECISIONS.md` and is asked at the next stop.
+7. **The build belongs to /goal.** This skill ends at an aligned, reviewed baseline and a mission line; it does not
+   run the non-stop TDD build, worker casting or ship gates.

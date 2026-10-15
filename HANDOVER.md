@@ -503,3 +503,21 @@ on this fork; recorded under "BAS-More fork deviations". `scripts/check-invarian
 `claude plugin validate . --strict` pass.
 
 Remaining: owner review and merge of the sync PR, then close PR #15.
+
+## Session 2026-10-15: `review-and-continue` added to `personal/` (Claude Code, branch `feat/review-and-continue-skill`)
+
+Added `skills/personal/review-and-continue/`, a model-invoked skill for resuming a project: it
+inventories repos, worktrees, stashes, recent sessions, docs and the code graph, secures
+uncommitted work as draft PRs, records doc-vs-code drift, applies the user's remediation
+decisions, gets a cross-vendor review, and hands a to-do list to `/goal`.
+
+- Bucket `personal/`, because it depends on the BAS-More setup (PAL, avios-context, total-recall,
+  `/goal`). It is therefore absent from `.claude-plugin/plugin.json` and the top-level README and
+  has no docs page, per the fork deviations in `CLAUDE-PROJECT-RULES.md`.
+- Three zero-dependency Node scripts (`repo-state`, `sessions`, `doc-refs`) with 20 tests under
+  `scripts/test/`. They run under the root `npm test`.
+- Reviewed before commit by a 10-agent Claude review and three rounds with `openai/gpt-5.6-sol`
+  through PAL. Every confirmed finding was fixed; the last round's four fixes were not re-reviewed.
+
+Checks: `./scripts/check-invariants.sh` reports all invariants hold; `npm test` result is in the PR.
+Remaining: owner review and merge of the PR. This does not change the project-memory work above.
