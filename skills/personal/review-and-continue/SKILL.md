@@ -24,11 +24,13 @@ Write their output to the session scratchpad (`$SCRATCH`), never into a repo.
 
 | Script | What it proves |
 |---|---|
-| `node S/repo-state.mjs <root>... [--no-gh]` | One entry per repository (worktrees nested): dirty, untracked, stashes (by SHA), no-upstream / gone / ahead branches, detached commits, pushed-but-no-PR branches, graph staleness → `attention[]`. Exit 1 = no repo found |
-| `node S/sessions.mjs <root>... --days 30` | Recent Claude Code sessions for the project and all its worktrees: title, first/last human prompt, branch |
+| `node S/repo-state.mjs <root>... [--no-gh]` | One entry per repository (worktrees nested): dirty, untracked, stashes (by SHA), no-upstream / gone / ahead branches, detached commits, pushed-but-no-PR branches, graph staleness → `attention[]`. Branches are classified with merged-PR data (`gh`, PRs into the default branch only) and the servers' live heads (`git ls-remote`): `landed` / `on-remote` go to `landedBranches` (not attention), commits past a merged PR's head to `afterMergeTails` (with `tailCommits`), and `at-risk` (commits on no live remote, or a failed check) to `unpushedBranches`. Commits held only by local tags → `localOnlyTags`. Exit 1 = no repo found |
+| `node S/sessions.mjs <root>... --days 30` | Recent CLI Claude Code sessions (`~/.claude/projects`) for the project and all its worktrees: title, first/last human prompt, branch. Desktop-app sessions are not there; see PHASES.md P1 |
 | `node S/doc-refs.mjs <repo>...` | Paths and `npm run` targets that docs reference but do not exist, ranked high/medium/low. Exit 1 = not a git work tree |
 
-Self-test first on a new machine: `node --test "S/test/*.test.mjs"`. A failure means the tooling is broken,
+Self-test first on a new machine: `node S/run-tests.mjs`. Do not hand `node --test` an absolute glob: through a
+path with a space (`C:\Users\First Last\...`) it matches nothing and still exits 0. The runner passes each file
+by path and fails unless every file runs at least one test that is not skipped. A failure means the tooling is broken,
 not the project. `repo-state` (or its manual git fallback) must work before anything is committed or pushed;
 without it the run is read-only. A failing `sessions` / `doc-refs` only marks its outputs UNVERIFIED.
 
@@ -37,7 +39,7 @@ without it the run is read-only. A failing `sessions` / `doc-refs` only marks it
 Copy this checklist into the task list. Full instructions per phase: [PHASES.md](PHASES.md).
 
 ```
-- [ ] P0 Scope roots → discover repos + remotes → STOP: scope, model per tier (MODELS.md), external-review consent
+- [ ] P0 Live-session check (resume) → scope roots → discover repos + remotes → STOP: scope, model per tier (MODELS.md), external-review consent
 - [ ] P1 Inventory: scripts + handover docs + project memory (all tagged [CLAIM])
 - [ ] P2 Secure work plan → STOP: approve → branch, scan, commit, push, draft PRs (never merge)
 - [ ] P3 Digest recent sessions; verify each claim against the repo

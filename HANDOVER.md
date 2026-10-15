@@ -521,3 +521,49 @@ decisions, gets a cross-vendor review, and hands a to-do list to `/goal`.
 
 Checks: `./scripts/check-invariants.sh` reports all invariants hold; `npm test` result is in the PR.
 Remaining: owner review and merge of the PR. This does not change the project-memory work above.
+
+## Session 2026-10-15: `review-and-continue` first-run defects fixed (Claude Code, branch `fix/review-and-continue-first-run-defects`)
+
+The skill's first live run (BAS-More/MAH) surfaced six defects; all are addressed in this branch.
+
+- Self-test: `node --test "<abs path>/*.test.mjs"` through a path with a space matched 0 files and
+  exited 0. New `scripts/run-tests.mjs` passes each file by path and fails on 0 tests; SKILL.md
+  now documents it.
+- `repo-state`: `origin/HEAD` (short name `origin`) was reported as a pushed branch with no PR.
+  Symrefs are skipped, and pushed branches are compared against the remote's default branch, so a
+  local default that is behind no longer flags merged work.
+- `repo-state`: squash-merged branches were reported as unsaved work (100 of 110 refs on MAH).
+  Branches are now classified with merged-PR data (`gh pr list --state merged`): `landed`,
+  `after-merge` (tail commits past the merged PR head, reported in `afterMergeTails`), `on-remote`,
+  or `at-risk` (commits on no remote, the only case left in `unpushedBranches`). Without PR data
+  nothing is called landed.
+- PHASES.md: desktop-app sessions are read through the ccd session tools (P1, P3); cloud and phone
+  sessions are recorded as not readable locally. P2 requires a CI-regression review before pushing
+  onto a branch that already has a PR. P0 step 0 and P7 step 0 check for another live session
+  continuing the same run.
+
+- A 3-lens adversarial review of the first version (18 agents) confirmed 15 findings, all fixed with
+  tests: failed git counts now mean at-risk (never safe); "on a remote" is checked against live
+  server heads (`git ls-remote`), not possibly stale tracking refs; only PRs merged into the default
+  branch count; tails exclude merge and default-branch commits and are emitted as `tailCommits`;
+  `ahead` branches are classified too; the base remote is not assumed to be `origin`; the runner
+  counts executed tests per file (a file registering none, or only skipped tests, fails).
+
+- Round 2 (11 agents) confirmed 9 more, all fixed with tests: every local branch is now classified
+  (a branch whose server copy was deleted but not pruned looked "in sync" and was omitted); stale
+  tracking refs are never reported as pushed; detached-worktree orphan counts use live heads and
+  fail closed; a merge-only tail after a merged PR is landed only if nothing past the PR head is off
+  the live remotes; describe() suites do not count as tests; sessions record every `cwd` (`cwds`).
+
+- Round 3 (12 agents, the last round the skill's own 3-round cap allows) confirmed 10; 9 fixed with
+  tests: unpushed merge commits after a merged PR are checked (a merge whose tree differs from a
+  clean re-merge of its parents makes the branch at-risk); a clone that has not fetched no longer
+  gets false at-risk branches (tracking refs of branches still live on the server count); in-sync
+  branches are skipped (100-branch repo: 3.4 s, was 16-33 s; main 1.6 s); `ls-remote` runs
+  non-interactive with a 15 s timeout; local-branch upstreams and remote names with a slash are
+  handled; unreadable worktrees and local-only tags are reported.
+- Not fixed, pre-existing: unpushed commits inside submodules are not inventoried (findRepos stops
+  at the superproject). Proposed as a follow-up.
+
+Checks: 35 new tests in `scripts/test/first-run.test.mjs` (55 in the skill); results are in the PR.
+Remaining: owner review and merge of the PR.
