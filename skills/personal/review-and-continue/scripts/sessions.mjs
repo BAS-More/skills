@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Usage: node sessions.mjs <project-root>... [--days 30] [--limit 20] [--home <~/.claude/projects>]
 // Lists recent Claude Code sessions for the project, its in-repo worktrees and any linked worktree
-// elsewhere on disk, newest first: title, first/last human prompt, branch, cwd. Read-only.
+// elsewhere on disk, newest first: title, first/last human prompt, branch, cwd (first) and cwds (all). Read-only.
 // Only sees sessions stored on THIS machine under THIS account.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -33,10 +33,12 @@ function humanText(o) {
 
 function readSession(file) {
   let title = null, firstPrompt = null, lastPrompt = null, cwd = null, gitBranch = null, userTurns = 0, startedAt = null;
+  const cwds = []; // every directory the session worked in (it can move into a worktree after the first prompt)
   for (const raw of readFileSync(file, 'utf8').split('\n')) {
     if (!raw) continue;
     let o;
     try { o = JSON.parse(raw); } catch { continue; }
+    if (o.cwd && !cwds.includes(o.cwd)) cwds.push(o.cwd);
     if (o.type === 'custom-title' && o.customTitle) title = o.customTitle;
     else if (o.type === 'ai-title' && o.aiTitle && !title) title = o.aiTitle;
     else if (o.type === 'user') {
@@ -50,7 +52,7 @@ function readSession(file) {
       startedAt ??= o.timestamp ?? null;
     }
   }
-  return { title, firstPrompt, lastPrompt, cwd, gitBranch, userTurns, startedAt };
+  return { title, firstPrompt, lastPrompt, cwd, cwds, gitBranch, userTurns, startedAt };
 }
 
 const slugOf = (p) => {

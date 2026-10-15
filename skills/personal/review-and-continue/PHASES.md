@@ -14,6 +14,12 @@ P7 Remediation · P8 To-do, gate, review · P9 Hand-off · Secret scan · PAL pa
 
 ## P0 Scope (main session), a STOP
 
+0. **Is another session already continuing this run?** Always on a resume, a restart or a reopened window, before
+   any other step. With the ccd session tools: `list_sessions` and look for one with `isRunning: true` whose cwd is
+   a root, one of its worktrees, or this run's `$SCRATCH`; also `search_session_transcripts` for the
+   `$SCRATCH/continuity` path and the `continuity/<RUN>` branch. A hit → stop and ask the user: hand the run to that
+   session, or stop it before this one continues. Two sessions advancing one run push twice and open duplicate PRs.
+   Tools unavailable → say so and ask the user whether another window is running it.
 1. Roots: the arguments; else a project named earlier in this conversation; else the cwd **if** it is a git repo
    (confirm it); else ask for a folder or repo URL. A URL not on disk: ask where to clone, then clone.
 2. `node S/repo-state.mjs <roots> > $SCRATCH/inventory.json`. If `discovered` is true (a root was a parent
@@ -35,6 +41,13 @@ P7 Remediation · P8 To-do, gate, review · P9 Hand-off · Secret scan · PAL pa
 node S/sessions.mjs <in-scope roots> --days 30 --limit 25 > $SCRATCH/sessions.json
 node S/doc-refs.mjs <repos[].path from inventory.json, all at once> > $SCRATCH/doc-refs.json
 ```
+`sessions.mjs` sees only CLI sessions stored in `~/.claude/projects` on this machine. Claude desktop-app sessions
+are not there (MAH, 2026-10-15: zero local transcripts, three desktop sessions). When the ccd session tools are
+available, also run `list_sessions` (keep those whose cwd is under a root) and `search_session_transcripts` for the
+repo name, project name and branch names; add each hit to `sessions.json` with `"source": "desktop"`, its session
+id, its `cwd` as both `cwd` and `cwds: [cwd]`, and `lastActive` taken from the tool's `lastActivityAt` (the P2
+"active < 2 h" row reads `cwds` and `lastActive`; without them a live desktop session's worktree would be rescued from under it). Cloud and phone sessions cannot be read from this machine: record them as UNVERIFIED, covered only by the P0
+"unpushed work on another machine or account?" answer and by the remote's branches and PRs.
 Re-run repo-state if scope changed in P0. **P2 onward requires a successful repo-state run** (exit 0, every
 in-scope repo present). If it fails, fall back to the commands it wraps (`git status --porcelain`,
 `git worktree list --porcelain`, `git stash list`, `git for-each-ref refs/heads`); if those fail too, the rest
@@ -53,9 +66,22 @@ Audit-only repos get report-only rows. Skip the skill's own outputs.
 
 | Finding | Proposed action |
 |---|---|
-| Worktree/checkout used by a session active < 2 h (`sessions.json` `cwd`, `lastActive`) | Report only (Hard rule 5) |
+| Worktree/checkout used by a session active < 2 h (any of the session's `cwds` in `sessions.json`, `lastActive`) | Report only (Hard rule 5) |
 | Dirty checkout or worktree (any branch) | **Copy out, never commit in place** (someone else may own that index). `git diff --binary HEAD > $SCRATCH/<slug>.patch` plus the untracked files (listed by name in the plan), `git worktree add <path> -b rescue/<branch>-<RUN> HEAD`, apply and commit there. PR base = the original branch if it is on the remote, else the default branch. The original checkout is left as it was; tell the user it can be cleaned once the PR is verified |
-| `no-upstream` / `ahead` / `upstream gone` branch | Scan the outgoing range, then push to the repo's discovered remote: `git push -u <remote> <branch>` |
+| `unpushedBranches[]`: `no-upstream` / `ahead` / `upstream gone`, `at-risk` (commits on no live remote) | Scan the outgoing range, then push to the repo's discovered remote: `git push -u <remote> <branch>` |
+| `unpushedBranches[]` with status `upstream … deleted on server` or `tracking ref only, branch deleted on server` | The server no longer has the branch, so its commits may exist only here. Push to a new name, never re-create the deleted one silently: `git push <remote> <ref>:refs/heads/rescue/<name>-<RUN>` → draft PR |
+| `unpushedBranches[]` entry with `mergeTailAfterPr` | Unpushed merge commits follow the merged PR and at least one carries its own edits or a conflict resolution (its tree differs from a clean re-merge of its parents). Push the branch to `rescue/<branch>-<RUN>` and draft a PR; cherry-pick cannot carry a merge |
+| `unpushedBranches[]` with status `tracks local branch …` | Its upstream is a local branch, not a server. Push as an ordinary at-risk branch |
+| `localOnlyTags[]` | Commits held only by a local tag (on no branch, no server). `git push <remote> refs/tags/<tag>` after the scan, or a rescue branch at the tag |
+| Worktree whose status could not be read but whose folder exists | Report only; inspect it by hand. Never `git worktree prune` it before the user has looked |
+| Detached worktree whose orphan check failed | Treat as orphan commits (row below) |
+| `unpushedBranches[]` entry with `error` | The check itself failed (corrupt or shallow repo); report it and treat the branch as unsaved. Never mark it safe |
+| `unpushedBranches[]` entry with `unverifiedPr` | `git fetch <remote> pull/<n>/head` (read-only), re-run repo-state; it then classifies as landed, after-merge or at-risk |
+| `unpushedBranches[]` entry with `mergedIntoOtherBase` | The PR landed in another branch, not the default; push as above and name that PR and base in the plan |
+| `afterMergeTails[]`: commits after a merged PR's head (`prHead`, `tailCommits` oldest first, merges and default-branch commits already excluded) | Never push onto the merged PR's branch. `git worktree add <path> -b rescue/<branch>-tail-<RUN> <remote>/<default>`, then `git cherry-pick <tailCommits...>` there (conflict → `git cherry-pick --abort`, stop that row, report), scan, push, draft PR whose body names the merged PR |
+| `landedBranches[]` (`landed` via a merged PR into the default branch, or `on-remote`) | Report only, as a count plus the list. At P6 offer deletion item by item: `kind: local` → `git branch -D <branch>`; `kind: remote` → a separate, explicit remote-branch deletion naming the remote, or, when its status says the branch is already deleted on the server, `git fetch --prune <remote>` (local tracking refs only). Never more than one item per approval |
+| `merged PRs not checked` attention item (`--no-gh`, no gh, or not GitHub) | Nothing could be shown as landed, so squash-merged branches appear as `at-risk`; say so in the plan. Same for `merged PR list hit the … limit` (older branches) |
+| `remote <name> unreachable` attention item | `on-remote` for that remote rests on local tracking refs that may be stale; re-run online before deleting anything |
 | Detached worktree with orphan commits | `git branch rescue/<RUN>-<sha7> <sha>` → scan → push → PR |
 | `pushed, not merged, no open PR` | Draft PR via the repo's provider (`gh pr create --draft …` / `glab mr create --draft …`) |
 | Repo with no provider | No push or PR: `git bundle create $SCRATCH/<repo>-<RUN>.bundle <branches>` + patch, scanned, listed for the user |
@@ -68,9 +94,17 @@ re-ask. Inspect `git diff --cached`, run the secret scan, write a message descri
 branch gets a draft PR/MR (or a bundle, for providerless repos). Record them for `$SCRATCH/continuity/BASELINE.md`.
 Merges are asked at P6, and only for PRs with green CI.
 
+**Pushing onto a branch that already has a PR** (open or draft) changes what that PR's CI runs. Before the push,
+have the outgoing diff reviewed for CI regressions (a T3 subagent, or PAL `precommit` where P0 consent allows):
+give it the repo's CI definitions (`.github/workflows/*.yml`, `.gitlab-ci.yml`, …) and ask, step by step, whether
+the change breaks any of them. A likely break, or one the review cannot rule out → push to
+`rescue/<branch>-<RUN>` with its own draft PR instead, and say why in the plan. MAH, 2026-10-15: a push onto an
+open PR branch would have broken its CI step 11.
+
 ## P3 Session digest (T2)
 
-For each session in `sessions.json` (newest first; open the `.jsonl` only when the prompts are not enough):
+For each session in `sessions.json` (newest first; when the prompts are not enough, open the `.jsonl` for a CLI
+session, or use `list_events` / `search_session_transcripts` on its id for a `desktop` one):
 what was asked, promised, left unfinished, decided. **Summarise; never copy tool results or anything
 credential-shaped** out of a transcript. Verify each "done" claim against the repo (commit, test, file).
 Output: `claim · session · VERIFIED / CONTRADICTED / UNVERIFIED · evidence` → `$SCRATCH/continuity/BASELINE.md`.
@@ -120,6 +154,8 @@ After the answers:
 
 ## P7 Remediation (T3 plans, T2 applies)
 
+0. Resuming P7 after a restart, a crash or a context reset: repeat the P0 step 0 live-session check first. P7 pushes
+   commits, so a second session continuing the same run is most costly here.
 1. `D/REMEDIATION-PLAN.md`: one task per decided item, acceptance check, blast radius
    (`knowledge-graph impact` upstream before touching any symbol), rollback.
 2. Apply in each affected repo's `CB` (sibling repos get their own `continuity/<RUN>` branch and PR): code fixes

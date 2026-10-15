@@ -1,4 +1,4 @@
-// Run: node --test "<skill>/scripts/test/*.test.mjs"   (a bare directory argument fails on Node >= 21)
+// Run: node <skill>/scripts/run-tests.mjs   (passes each file by path; a glob through a path with a space finds 0 tests)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';

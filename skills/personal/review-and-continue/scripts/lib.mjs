@@ -12,9 +12,10 @@ const isAbs = (p) => /^[A-Za-z]:[\\/]/.test(p) || p.startsWith('/') || p.startsW
 export const projectSlug = (p) => (isAbs(p) ? p : resolve(p)).replace(/[^A-Za-z0-9]/g, '-');
 
 // Returns trimmed stdout, or null when git exits non-zero (missing upstream, no stash, etc).
-export function git(cwd, args) {
+// input: text for stdin (--stdin / --batch-check); timeout: ms, for commands that touch the network; env: child env.
+export function git(cwd, args, { input, timeout, env } = {}) {
   try {
-    return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).trim();
+    return execFileSync('git', args, { cwd, encoding: 'utf8', input, timeout, env, stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).trim();
   } catch {
     return null;
   }

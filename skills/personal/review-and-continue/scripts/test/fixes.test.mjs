@@ -1,5 +1,5 @@
 // Regression tests for the adversarial-review findings (2026-10-15).
-// Run: node --test "<skill>/scripts/test/*.test.mjs"
+// Run: node <skill>/scripts/run-tests.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
