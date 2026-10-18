@@ -15,11 +15,13 @@ P7 Remediation · P8 To-do, gate, review · P9 Hand-off · Secret scan · PAL pa
 ## P0 Scope (main session), a STOP
 
 0. **Is another session already continuing this run?** Always on a resume, a restart or a reopened window, before
-   any other step. With the ccd session tools: `list_sessions` and look for one with `isRunning: true` whose cwd is
-   a root, one of its worktrees, or this run's `$SCRATCH`; also `search_session_transcripts` for the
-   `$SCRATCH/continuity` path and the `continuity/<RUN>` branch. A hit → stop and ask the user: hand the run to that
+   any other step. Use Codex `list_threads` / `read_thread`, or Claude ccd `list_sessions` /
+   `search_session_transcripts`, according to their actual schemas. Find another running session whose
+   cwd/project is a root, a linked worktree or this run's `$SCRATCH`; inspect matching transcript summaries
+   for `$SCRATCH/continuity` and `continuity/<RUN>`. Exclude this session and its assigned subagents.
+   A conflicting running session → stop and ask the user: hand the run to that
    session, or stop it before this one continues. Two sessions advancing one run push twice and open duplicate PRs.
-   Tools unavailable → say so and ask the user whether another window is running it.
+   Tools unavailable → report the visibility gap; use an existing explicit user answer about active windows, otherwise ask. Do not infer inactivity from missing transcripts.
 1. Roots: the arguments; else a project named earlier in this conversation; else the cwd **if** it is a git repo
    (confirm it); else ask for a folder or repo URL. A URL not on disk: ask where to clone, then clone.
 2. `node S/repo-state.mjs <roots> > $SCRATCH/inventory.json`. If `discovered` is true (a root was a parent
@@ -28,7 +30,7 @@ P7 Remediation · P8 To-do, gate, review · P9 Hand-off · Secret scan · PAL pa
 4. Per repo, discover where work can go: the writable push remote (do not assume `origin`), hosting provider
    (`gh` for GitHub, `glab` for GitLab, else none), default branch, and the repo's own branch/PR rules.
    No provider → that repo's secured work is handed over as a `git bundle` + patch in `$SCRATCH`, not a PR.
-5. **One AskUserQuestion batch**: repos in scope, each marked *audit-only* or *may be changed* · model per tier ·
+5. **One available-question-tool batch (or chat)**: repos in scope, each marked *audit-only* or *may be changed* · model per tier ·
    **consent to send repository content to the T4 vendor, per repo** (full content / artifacts and summaries only /
    no external review) · **artifact host**: a *may be changed* repo whose continuity branch carries the artifacts, or
    "local only" (artifacts stay in `$SCRATCH/continuity/`, nothing committed, and `D` means that folder for the rest
@@ -41,27 +43,33 @@ P7 Remediation · P8 To-do, gate, review · P9 Hand-off · Secret scan · PAL pa
 node S/sessions.mjs <in-scope roots> --days 30 --limit 25 > $SCRATCH/sessions.json
 node S/doc-refs.mjs <repos[].path from inventory.json, all at once> > $SCRATCH/doc-refs.json
 ```
-`sessions.mjs` sees only CLI sessions stored in `~/.claude/projects` on this machine. Claude desktop-app sessions
-are not there (MAH, 2026-10-15: zero local transcripts, three desktop sessions). When the ccd session tools are
-available, also run `list_sessions` (keep those whose cwd is under a root) and `search_session_transcripts` for the
-repo name, project name and branch names; add each hit to `sessions.json` with `"source": "desktop"`, its session
-id, its `cwd` as both `cwd` and `cwds: [cwd]`, and `lastActive` taken from the tool's `lastActivityAt` (the P2
-"active < 2 h" row reads `cwds` and `lastActive`; without them a live desktop session's worktree would be rescued from under it). Cloud and phone sessions cannot be read from this machine: record them as UNVERIFIED, covered only by the P0
-"unpushed work on another machine or account?" answer and by the remote's branches and PRs.
+`sessions.mjs` reads Claude Code `~/.claude/projects` and Codex `$CODEX_HOME/sessions`
+(default `~/.codex/sessions`) on this machine/account. `--home` overrides the Claude directory;
+`--codex-home` overrides the Codex sessions directory. Codex turn contexts supply every cwd and
+`currentCwd`; file modification time supplies `lastActive`, an activity signal, not proof of a running task.
+Local files can include desktop-origin rollouts but do not establish complete desktop/cloud coverage.
+Supplement with Codex `list_threads` / `read_thread`, or Claude ccd `list_sessions` /
+`search_session_transcripts` when available. Preserve source, id, all known `cwds`, actual running state,
+and authoritative last-activity time. Never invent missing timestamps; unknown activity blocks mutation
+of the affected checkout until resolved. Mark unavailable cloud/phone/other-account coverage UNVERIFIED.
+The P0 answer and remote branches/PRs supplement inventory; neither proves absent unpushed work.
 Re-run repo-state if scope changed in P0. **P2 onward requires a successful repo-state run** (exit 0, every
 in-scope repo present). If it fails, fall back to the commands it wraps (`git status --porcelain`,
 `git worktree list --porcelain`, `git stash list`, `git for-each-ref refs/heads`); if those fail too, the rest
 of the run is read-only reporting. Read, per repo, whatever exists: `CLAUDE.md`, `AGENTS.md`, `README*`,
 `HANDOVER*`/`handoff*`, `.project-memory/POLICY.md` + `config.json`, docs index, newest spec/plan/ADR,
 the build manifest (`package.json`, `pyproject.toml`, …) and any to-do/plan file. If memory MCPs are
-reachable (total-recall, avios-context `get_project_state`, graphiti), pull project state too.
+reachable (total-recall, avios-context `get_project_state`, Knowledge-Graph), pull project state too. Total Recall remains conversational/session memory;
+Knowledge-Graph supplies repository symbols, dependencies and local semantic code context. Verify its
+freshness and provenance; do not pretend its code index contains conversational history.
 Tag all of it `[CLAIM]` until P3/P4 verify it. A repo where doc-refs exits 1 is "docs UNVERIFIED".
 
 ## P2 Secure uncommitted work (T1), a STOP before acting
 
 Build a plan table from every `attention[]` item of every *may be changed* repo. Each row shows the files
 (untracked ones by name), total size, binary/large-file flags, target branch, commit range, and destination remote
-with its visibility (public/private). Ask **once** for approval of the whole table (the user can strike rows).
+with its visibility (public/private). Present the table; existing explicit permission to secure the scoped work satisfies that approval.
+Ask only for rows outside that authority or requiring a new material decision (the user can strike rows).
 Audit-only repos get report-only rows. Skip the skill's own outputs.
 
 | Finding | Proposed action |
@@ -104,7 +112,7 @@ open PR branch would have broken its CI step 11.
 ## P3 Session digest (T2)
 
 For each session in `sessions.json` (newest first; when the prompts are not enough, open the `.jsonl` for a CLI
-session, or use `list_events` / `search_session_transcripts` on its id for a `desktop` one):
+session, or use Codex `read_thread` / Claude `list_events` or `search_session_transcripts` for a desktop one):
 what was asked, promised, left unfinished, decided. **Summarise; never copy tool results or anything
 credential-shaped** out of a transcript. Verify each "done" claim against the repo (commit, test, file).
 Output: `claim · session · VERIFIED / CONTRADICTED / UNVERIFIED · evidence` → `$SCRATCH/continuity/BASELINE.md`.
@@ -128,8 +136,8 @@ Output: `claim · session · VERIFIED / CONTRADICTED / UNVERIFIED · evidence` �
 
 Inputs: `doc-refs.json` (all `high` and `medium`; `low` may be sampled), the P3 table, and the list of **every**
 tracked doc. Security, operations, runbook and deployment docs are always checked in full, never sampled.
-Fan out one reviewer per doc cluster (spec/plan, README/setup, ADRs, handover): Workflow if the user has opted
-into multi-agent orchestration, else Agent calls. Each extracts checkable claims and verifies them against
+Fan out one reviewer per doc cluster (spec/plan, README/setup, ADRs, handover): native Codex collaboration or Claude Agent/Workflow calls
+as supported (see SKILL.md). If unavailable, review each cluster sequentially. Each extracts checkable claims and verifies them against
 code and graph (`knowledge-graph query` / `context`). Types: `DOC-STALE` · `CODE-MISSING` · `CODE-DIVERGED` ·
 `UNDOCUMENTED` · `DEAD-REF`. Every entry needs doc file:line plus code file:line or command output; drop the rest.
 A cluster that could not be checked is listed as UNVERIFIED, not omitted. The register header states coverage
@@ -137,7 +145,7 @@ A cluster that could not be checked is listed as UNVERIFIED, not omitted. The re
 
 ## P6 Decisions (main session), a STOP
 
-Show the register by severity. Per item (≤ 4 per AskUserQuestion): **fix code · fix doc · defer · accept**,
+Show the register by severity. Per item (≤ 4 per question batch): **fix code · fix doc · defer · accept**,
 recommendation first. Also ask which P2 PRs (CI green) to merge, and any queued `DECISIONS.md` questions.
 No drift found: say "no drift found among N checked claims (coverage: …)", never "zero drift"; P7 then has no fixes.
 
@@ -161,8 +169,8 @@ After the answers:
 2. Apply in each affected repo's `CB` (sibling repos get their own `continuity/<RUN>` branch and PR): code fixes
    test-first (RED → GREEN), doc fixes alongside. Fixes in audit-only repos become TODO items instead.
 3. Refresh the graph (P4 step 1); re-run `doc-refs` and the P4 suite; nothing green may go red.
-4. Update the project's own to-do/plan file if it has one (in `CB`). Memory-store write-back (avios-context,
-   total-recall, Graphiti) is only *prepared* here: `D/MEMORY-UPDATES.md` lists store, namespace, whether it
+4. Update the project's own to-do/plan file if it has one (in `CB`). Conversational memory-store write-back (avios-context,
+   Total Recall) is only *prepared* here: `D/MEMORY-UPDATES.md` lists store, namespace, whether it
    leaves the machine, and the **exact serialized payload**, each scanned under § Secret scan. Executed at P9 only
    as approved, byte for byte.
 
@@ -182,7 +190,7 @@ After the answers:
 
 ## P9 Hand-off (main session), a STOP
 
-1. Ask the open questions (≤ 4 per AskUserQuestion; the rest stay in `DECISIONS.md`), including approval of
+1. Ask the open questions (≤ 4 per question batch; the rest stay in `DECISIONS.md`), including approval of
    `MEMORY-UPDATES.md` store by store. Execute only the approved memory writes.
 2. Per repo with a `CB`: scan staged changes and commit (the primary repo's commit includes `D`); scan the full
    outgoing range against the remote; push to the discovered remote and open a draft PR/MR, or for providerless

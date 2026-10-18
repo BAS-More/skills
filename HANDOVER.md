@@ -567,3 +567,32 @@ The skill's first live run (BAS-More/MAH) surfaced six defects; all are addresse
 
 Checks: 35 new tests in `scripts/test/first-run.test.mjs` (55 in the skill); results are in the PR.
 Remaining: owner review and merge of the PR.
+
+
+## Session 2026-10-18: review-and-continue runtime portability
+
+Scope: skills/personal/review-and-continue; isolated branch codex/review-and-continue-portable.
+Supports native Claude Code and Codex capabilities, inherited models and already granted scoped
+authorization. Total Recall remains session memory; Knowledge-Graph replaces Graphiti references
+for fresh repository context. No external vendor payloads sent by this change.
+
+Local transcript inventory now reads both Claude projects and Codex sessions, including linked
+worktree turn-context cwds, current cwd and activity times. It filters injected instructions and
+duplicate Codex event records. Desktop/cloud completeness still requires native tools and is
+explicitly unverified when unavailable. Windows short/long path aliases resolve before matching.
+
+Source impact: listSessions callers are the CLI and existing session tests; readSession and
+humanText are private to that module. No graph tooling configured in this checkout; graph
+checks skipped under project policy. No dependency, bucket or plugin-registration changes.
+
+Validation: node skills/personal/review-and-continue/scripts/run-tests.mjs passed 56/56
+(182765 ms); focused Codex regression passed; git diff --check passed. The first full run
+passed the original 55 tests but exposed a Windows path-alias defect in the new regression;
+realpath normalization corrected it before the successful full rerun.
+Parent review clarified that only conversational memory write-back requires P9; repository
+graph refresh remains under the project workflow. Existing session fixtures and CLI checks
+now use isolated Claude/Codex roots, never the account transcript store. The six affected
+session/CLI tests passed after these changes. Publication invariants, plugin-version check
+and git diff --check passed; repo-state completed successfully (--no-gh, PR classification
+unverified). Skill gitleaks scan passed. Publication remains for parent review; no push or PR
+created by this worker.
