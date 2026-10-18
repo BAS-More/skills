@@ -428,7 +428,7 @@ test('sessions record every cwd a session worked in, not only the first', () => 
     { type: 'assistant', message: { content: [] }, cwd: root + '\.claude\worktrees\foo' },
     { type: 'user', message: { content: 'more' }, cwd: root + '\.claude\worktrees\foo' },
   ].map((o) => JSON.stringify(o)).join('\n'));
-  const [s] = listSessions([root], { home, days: 3650 });
+  const [s] = listSessions([root], { home, codexHome: join(home, 'missing-codex'), days: 3650 });
   assert.equal(s.cwd, root);
   assert.deepEqual(s.cwds, [root, root + '\.claude\worktrees\foo']);
 });

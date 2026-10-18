@@ -90,3 +90,11 @@ Earlier public PR history contains portfolio metadata; HEAD is aggregate-only.
 The final installer has 11 passing Linux/Windows tests, including formatter receipts.
 MAH's nine-view session freshness check passed. Use the private final record for
 per-repository merge outcomes; the public JSON records scope only.
+
+
+## Review-and-continue portability continuation - 2026-10-18
+
+Review the isolated codex/review-and-continue-portable diff. The skill now supports Claude Code
+and Codex tools/transcripts; Total Recall remains enabled, Knowledge-Graph provides code context.
+Check the latest validation entry in HANDOVER.md. Keep the existing project-memory workstream
+unchanged. Scan any outgoing range and obtain parent review before publishing this branch.

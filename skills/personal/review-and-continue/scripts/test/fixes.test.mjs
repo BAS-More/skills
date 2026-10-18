@@ -162,7 +162,7 @@ test('sessions: array prompts, reminders stripped, meta and notifications skippe
     { type: 'user', message: { content: '<command-name>/goal</command-name><command-args>ship it</command-args>' } },
   ];
   writeFileSync(join(d, 's.jsonl'), rows.map((o) => JSON.stringify(o)).join('\n'));
-  const [s] = listSessions([root], { home, days: 3650 });
+  const [s] = listSessions([root], { home, codexHome: join(home, 'missing-codex'), days: 3650 });
   assert.equal(s.firstPrompt, 'real ask in array');
   assert.equal(s.lastPrompt, '/goal ship it');
   assert.equal(s.userTurns, 2);
@@ -172,5 +172,5 @@ test('sessions: trailing separator and case differences still match', () => {
   const home = mkdtempSync(join(tmpdir(), 'rach-'));
   mkdirSync(join(home, projectSlug('C:\\Dev\\Case')));
   writeFileSync(join(home, projectSlug('C:\\Dev\\Case'), 's.jsonl'), JSON.stringify({ type: 'user', message: { content: 'hi' } }));
-  assert.equal(listSessions(['c:\\dev\\case\\'], { home, days: 3650 }).length, 1);
+  assert.equal(listSessions(['c:\\dev\\case\\'], { home, codexHome: join(home, 'missing-codex'), days: 3650 }).length, 1);
 });

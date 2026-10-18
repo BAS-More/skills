@@ -91,7 +91,7 @@ test('listSessions reads titles and prompts for the project and its worktrees on
   writeFileSync(join(own, 's1.jsonl'), lines('Own title', 'first ask'));
   writeFileSync(join(wt, 's2.jsonl'), lines('WT title', 'wt ask'));
   writeFileSync(join(other, 's3.jsonl'), lines('Other', 'nope'));
-  const s = listSessions([root], { home, days: 3650, limit: 10 });
+  const s = listSessions([root], { home, codexHome: join(home, 'missing-codex'), days: 3650, limit: 10 });
   assert.equal(s.length, 2);
   const one = s.find((x) => x.title === 'Own title');
   assert.equal(one.firstPrompt, 'first ask');
@@ -135,7 +135,7 @@ test('docRefs accepts suffix matches and skips branch prefixes and elisions', ()
 
 test('CLIs emit valid JSON', () => {
   const dir = makeRepo();
-  for (const [s, args] of [['repo-state.mjs', [dir, '--no-gh']], ['doc-refs.mjs', [dir]], ['sessions.mjs', [dir, '--days', '1']]]) {
+  for (const [s, args] of [['repo-state.mjs', [dir, '--no-gh']], ['doc-refs.mjs', [dir]], ['sessions.mjs', [dir, '--days', '1', '--home', join(dir, 'missing-claude'), '--codex-home', join(dir, 'missing-codex')]]]) {
     const out = execFileSync(process.execPath, [join(SCRIPTS, s), ...args], { encoding: 'utf8' });
     assert.doesNotThrow(() => JSON.parse(out), s);
   }
