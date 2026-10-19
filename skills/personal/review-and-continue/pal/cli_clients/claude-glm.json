@@ -4,7 +4,7 @@
   "command": "claude",
   "additional_args": [
     "--model",
-    "glm/glm-5.3",
+    "openrouter/z-ai/glm-5.3",
     "--tools",
     "Read",
     "Grep",

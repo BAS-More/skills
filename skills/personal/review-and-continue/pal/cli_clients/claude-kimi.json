@@ -4,7 +4,7 @@
   "command": "claude",
   "additional_args": [
     "--model",
-    "kimi/kimi-k3",
+    "openrouter/moonshotai/kimi-k3",
     "--tools",
     "Read",
     "Grep",
