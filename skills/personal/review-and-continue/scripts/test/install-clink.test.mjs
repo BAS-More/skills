@@ -68,7 +68,9 @@ test('every shipped client is read-only: only Read, Grep and Glob, dontAsk, no M
     assert.ok(a.includes('--strict-mcp-config'), f);
     assert.deepEqual(JSON.parse(after('--mcp-config')), { mcpServers: {} }, f);
     for (const rule of ['Read(~/**)', 'Read(**/.env)', 'Read(**/.env.*)', 'Read(**/.git/config)']) assert.ok(a.includes(rule), `${f} ${rule}`);
-    assert.deepEqual(cfg.env, {}, `${f} adds no environment`);
+    // A child started from the Claude desktop app inherits CLAUDE_CODE_ENTRYPOINT=claude-desktop, which makes
+    // claude -p wait for host-supplied auth and answer 'Not logged in' without calling 9router. Reset it, nothing else.
+    assert.deepEqual(cfg.env, { CLAUDE_CODE_ENTRYPOINT: 'sdk-cli' }, `${f} only resets the inherited entrypoint`);
   }
 });
 

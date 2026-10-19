@@ -51,7 +51,9 @@ The script never adds a model the pool does not list, so a newer model joins by 
   - *Tool job* (`drift`): PAL `clink` with `cli_name: <clink>`. Each client runs the `claude` CLI on that model
     through 9router with **read-only tools only** (`--tools Read Grep Glob`, so no shell, no edits, no web),
     `dontAsk` permissions, no MCP servers, and reads of the home folder, `.env`, `.git/config` and key files
-    denied. Clients come from `pal/cli_clients/`; install them with
+    denied. Each client sets one variable, `CLAUDE_CODE_ENTRYPOINT=sdk-cli`: PAL passes its own environment
+    to the child, and under the Claude desktop app that holds `claude-desktop`, which makes `claude -p` answer
+    "Not logged in" without calling 9router. Clients come from `pal/cli_clients/`; install them with
     `node S/install-clink.mjs --pal <PAL dir> --add-dir <projects root> --apply`, which refuses unless that PAL
     accepts the `runner` field (BAS-More/PAL-MCP). Restart PAL afterwards. No clients → P5 runs on T3 alone.
 - **Never on the pool:** running scripts or builds (P1, P4), git of any kind, PR creation or merges (P2, P6,
