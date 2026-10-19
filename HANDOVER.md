@@ -631,3 +631,9 @@ model-pick against live OpenRouter prices on 2026-10-20 ranked GLM 5.3 cheapest 
 Not verified end to end: 9router on 127.0.0.1:20128 accepted connections but answered nothing
 within 10 s, and PAL chat probes to all four pool models timed out, so no pool model or clink
 client has been exercised live. MiMo's route uses OpenRouter, whose vault key is expired.
+
+Follow-up 2026-10-20 (branch fix/rac-pool-route-recipients): all four pool routes answered
+HTTP 200 through 9router with its existing OpenRouter key (no new key minted; the vault holds
+none). OpenRouter served GLM via Morph, Kimi via InferenceNet and MiMo via Novita, not the model
+vendors, so model-pool.json `route` and the MODELS.md egress text now name "OpenRouter and the
+hosts it routes to" as the consent recipient. claude-qwen answers through clink (PR #28).

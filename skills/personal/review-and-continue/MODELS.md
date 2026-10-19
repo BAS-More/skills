@@ -62,13 +62,16 @@ The script never adds a model the pool does not list, so a newer model joins by 
   this skill, not by the clients. Pool output is a `[CLAIM]`: a Claude T3 checks every drift candidate and
   every "done" a digest reports before it reaches an artifact.
 - **Egress:** the P0 consent is asked per repo and per *recipient*, which is every party in the pool entry's
-  `route` (9router's upstream provider, OpenRouter or TokenRouter, then the model vendor), not just the vendor.
+  `route`: 9router, then OpenRouter or TokenRouter, then the host that actually serves the model. OpenRouter
+  picks that host per request from several third parties (each response names it in `provider`), so it is often
+  not the model's vendor. Ask consent for "OpenRouter and the hosts it routes to", and record the hosts seen.
   Session transcripts are a separate consent item from repository content. A clink job can read any file its
   deny rules do not block under the `--add-dir` root, so it needs *full content* consent for every repo there
   and a clean `gitleaks detect --source <checkout>` (history included) first; otherwise P5 runs on T3 alone.
 - **Residual risk, stated plainly:** deny rules are pattern-based and the clients still load the user's own
   settings and hooks (they supply the 9router address and login), so hook output can reach the pool vendor.
-  Nothing here has been run end to end against a live 9router; treat the first P0 probe as the test.
+  Verified 2026-10-20: all four routes answer through 9router, and `claude-qwen` answers through clink; the
+  other three clients have not been probed through clink yet, so treat the P0 probe as their test.
 - **Record** the pick, its estimate and every exclusion reason in DECISIONS.md, and the model ID next to each
   artifact it touched.
 
