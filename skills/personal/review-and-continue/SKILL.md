@@ -31,7 +31,7 @@ Tool absence never relaxes secret scanning, permissions, evidence requirements o
 /review-and-continue                                 # uses the project named earlier, else confirms the cwd repo, else asks
 ```
 
-Scripts (Node ≥ 18, no deps, read-only, JSON on stdout). `S` = this skill's `scripts/` dir.
+Scripts (Node ≥ 18, no deps, read-only except `install-clink --apply`; JSON on stdout except `install-clink`, which prints text). `S` = this skill's `scripts/` dir.
 Write their output to the session scratchpad (`$SCRATCH`), never into a repo.
 
 | Script | What it proves |
@@ -39,6 +39,8 @@ Write their output to the session scratchpad (`$SCRATCH`), never into a repo.
 | `node S/repo-state.mjs <root>... [--no-gh]` | One entry per repository (worktrees nested): dirty, untracked, stashes (by SHA), no-upstream / gone / ahead branches, detached commits, pushed-but-no-PR branches, graph staleness → `attention[]`. Branches are classified with merged-PR data (`gh`, PRs into the default branch only) and the servers' live heads (`git ls-remote`): `landed` / `on-remote` go to `landedBranches` (not attention), commits past a merged PR's head to `afterMergeTails` (with `tailCommits`), and `at-risk` (commits on no live remote, or a failed check) to `unpushedBranches`. Commits held only by local tags → `localOnlyTags`. Exit 1 = no repo found |
 | `node S/sessions.mjs <root>... --days 30` | Recent local Claude Code (`~/.claude/projects`) and Codex (`$CODEX_HOME/sessions`, default `~/.codex/sessions`) transcripts for the project and all its worktrees: title, first/last human prompt, branch. Local transcripts are not a complete desktop/cloud inventory; see PHASES.md P1 |
 | `node S/doc-refs.mjs <repo>...` | Paths and `npm run` targets that docs reference but do not exist, ranked high/medium/low. Exit 1 = not a git work tree |
+| `node S/model-pick.mjs [--reachable <file>]` | The cheapest model in [model-pool.json](model-pool.json) for each job (digest, drift, review), with an estimated USD cost from OpenRouter list prices, its route, and a reason for every exclusion. Exit 1 = prices unavailable; exit 3 = bad arguments or input. See MODELS.md, Cheap tier |
+| `node S/install-clink.mjs --pal <dir> [--add-dir <root>] [--apply]` | The one script that writes: copies the pool's read-only PAL clink clients to `~/.pal/cli_clients`. Dry run unless `--apply`; refuses on a PAL without `runner` support; never overwrites a changed file without `--force`. Exit 1 = refused, 2 = conflicts left, 3 = bad arguments |
 
 Self-test first on a new machine: `node S/run-tests.mjs`. Do not hand `node --test` an absolute glob: through a
 path with a space (`C:\Users\First Last\...`) it matches nothing and still exits 0. The runner passes each file
@@ -75,7 +77,8 @@ Artifacts: `BASELINE.md`, `DRIFT-REGISTER.md`, `REMEDIATION-PLAN.md`, `REVIEW.md
    OK naming the item. "Secure the work" means *a PR exists*, not *it is merged*.
 3. **Each repo's own rules win** (CLAUDE.md / AGENTS.md: base branch, branch names, forbidden remotes, PR flow).
 4. **Egress is scanned and consented.** gitleaks/trufflehog on every push range, bundle, artifact and PAL payload
-   (PHASES.md § Secret scan); repo content goes to another vendor only as far as the P0 per-repo consent allows.
+   (PHASES.md § Secret scan); repo content goes to another vendor (the T4 reviewer or any cheap-pool model) only as far
+   as the P0 per-repo consent for that vendor allows.
    With no scanner, egress happens only if the user explicitly accepts it, and is logged as UNSCANNED-ACCEPTED.
 5. **Do not disturb anyone's working state.** Never commit inside or switch the branch of an existing checkout: dirty
    work is copied into a rescue worktree. Skip checkouts used by a session active in the last 2 hours. Re-check

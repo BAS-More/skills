@@ -26,13 +26,18 @@ P7 Remediation · P8 To-do, gate, review · P9 Hand-off · Secret scan · PAL pa
    (confirm it); else ask for a folder or repo URL. A URL not on disk: ask where to clone, then clone.
 2. `node S/repo-state.mjs <roots> > $SCRATCH/inventory.json`. If `discovered` is true (a root was a parent
    folder) or docs name sibling repos (e.g. `sentinel/...`), list every candidate repo.
-3. Discover models and build the tier proposal (MODELS.md § Discovery).
+3. Discover models and build the tier proposal (MODELS.md § Discovery), including the cheap-pool ranking
+   (`model-pick.mjs`) and a one-line probe down each job's ranking on its channel (PAL `chat` for text jobs,
+   the `clink` client for `drift`) until one answers. Show each job's pick, its route and its estimated cost.
 4. Per repo, discover where work can go: the writable push remote (do not assume `origin`), hosting provider
    (`gh` for GitHub, `glab` for GitLab, else none), default branch, and the repo's own branch/PR rules.
    No provider → that repo's secured work is handed over as a `git bundle` + patch in `$SCRATCH`, not a PR.
 5. **One available-question-tool batch (or chat)**: repos in scope, each marked *audit-only* or *may be changed* · model per tier ·
-   **consent to send repository content to the T4 vendor, per repo** (full content / artifacts and summaries only /
-   no external review) · **artifact host**: a *may be changed* repo whose continuity branch carries the artifacts, or
+   **consent to send repository content to the T4 vendor and to each cheap-pool recipient, per repo** (full
+   content / artifacts and summaries only / none). A pool recipient is every party in the entry's `route`, so
+   name them. A recipient without *full content* gets no clink job ·
+   **consent to send session transcripts** (prompts and final answers only) to the pool's `digest` recipient,
+   separate from repository content; without it P3 runs on T2 · **artifact host**: a *may be changed* repo whose continuity branch carries the artifacts, or
    "local only" (artifacts stay in `$SCRATCH/continuity/`, nothing committed, and `D` means that folder for the rest
    of the run) · clone location (if needed) · "any unpushed work on another machine or account?"
    Record the answers in `$SCRATCH/continuity/DECISIONS.md`.
@@ -109,7 +114,12 @@ the change breaks any of them. A likely break, or one the review cannot rule out
 `rescue/<branch>-<RUN>` with its own draft PR instead, and say why in the plan. MAH, 2026-10-15: a push onto an
 open PR branch would have broken its CI step 11.
 
-## P3 Session digest (T2)
+## P3 Session digest (C, else T2; T3 checks every claim)
+
+On the pool (only with the P0 transcript consent), send one session per PAL `chat` call, first reduced to its
+human prompts and final answers in a `$SCRATCH` file (never raw tool results) and secret-scanned there
+(`gitleaks detect --no-git --source <file>`). The digest's VERIFIED / CONTRADICTED marks are drafts: a Claude T3 re-checks each
+against the repo before it goes into `BASELINE.md`.
 
 For each session in `sessions.json` (newest first; when the prompts are not enough, open the `.jsonl` for a CLI
 session, or use Codex `read_thread` / Claude `list_events` or `search_session_transcripts` for a desktop one):
@@ -132,7 +142,12 @@ Output: `claim · session · VERIFIED / CONTRADICTED / UNVERIFIED · evidence` �
 3. **Live dependencies** named in docs: one cheap read-only probe each; unreachable = UNVERIFIED.
 4. Write `$SCRATCH/continuity/BASELINE.md`: commit SHA per repo + these results. Nothing inferred. Provisional until P6 re-runs it on the post-merge SHA.
 
-## P5 Drift register (T3)
+## P5 Drift register (C first pass via read-only clink, T3 decides)
+
+When a `drift` client answered the P0 probe and the repo has consent for its recipients, the pool may draft
+candidate entries per doc cluster (one `clink` call per cluster, naming the docs and code paths). Every
+candidate is re-checked by a Claude T3 against its file:line evidence; nothing the pool alone found enters
+the register, and the pool's candidates never reduce the coverage the T3 reviewers owe below.
 
 Inputs: `doc-refs.json` (all `high` and `medium`; `low` may be sampled), the P3 table, and the list of **every**
 tracked doc. Security, operations, runbook and deployment docs are always checked in full, never sampled.
@@ -174,14 +189,15 @@ After the answers:
    leaves the machine, and the **exact serialized payload**, each scanned under § Secret scan. Executed at P9 only
    as approved, byte for byte.
 
-## P8 To-do, alignment gate, review (T3 + T4)
+## P8 To-do, alignment gate, review (T3 + T4, C as neutral third reviewer)
 
 1. Draft `D/TODO.md` (template): remaining work in dependency order with acceptance criteria and size.
 2. **Alignment gate**: re-run the P5 claim check on every `fix code` / `fix doc` item. Proceed only when each is
    resolved; the only open items allowed are ones the user chose to `defer` or `accept`.
 3. **Cross-vendor review**, reviewer per MODELS.md. Review set: P2 PR diffs, the P3 claim table, `BASELINE`,
    `DRIFT-REGISTER`, `REMEDIATION-PLAN`, the continuity diffs, `TODO.md`. **Send only what the P0 consent allows**
-   per repo (artifacts-only repos: no diffs or code). Secret-scan each item first; send per PAL payloads (below). Tools: `codereview` for diffs, `consensus` (reviewer stance `against`) for the
+   per repo and recipient (artifacts-only repos: no diffs or code). In `consensus` the neutral third model is
+   the pool's `review` pick, held to its own recipients' consent; none if declined. Secret-scan each item first; send per PAL payloads (below). Tools: `codereview` for diffs, `consensus` (reviewer stance `against`) for the
    plan and to-do, `precommit` before pushing `CB`. Ask it to refute, not approve.
 4. Triage: valid → fix; invalid → reason in `D/REVIEW.md`. Re-review fixes. Stop at a clean round or after
    3 rounds; open findings after round 3 block P9 until the user rules on them.

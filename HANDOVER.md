@@ -596,3 +596,38 @@ session/CLI tests passed after these changes. Publication invariants, plugin-ver
 and git diff --check passed; repo-state completed successfully (--no-gh, PR classification
 unverified). Skill gitleaks scan passed. Publication remains for parent review; no push or PR
 created by this worker.
+
+
+## Session 2026-10-20: review-and-continue cheap-model tier
+
+Scope: skills/personal/review-and-continue; branch feat/review-and-continue-cheap-models.
+Owner request: pick the cheapest suitable model per job from GLM 5.3, Kimi K3, MiMo V2.6 Pro and
+Qwen3.8 Max. Owner decisions: rule plus pool (not a fixed list); per-repo P0 consent per vendor; tool
+use through PAL clink; two PRs, nothing installed until the PAL patch is merged.
+
+Added: model-pool.json (with each route's recipients); scripts/model-pick.mjs (ranks the pool
+per job by estimated USD from OpenRouter's public list prices, reachability checked per channel,
+a reason for every exclusion; exit 1 prices unavailable, 3 bad input); scripts/install-clink.mjs
+(dry run by default; refuses on a PAL whose CLIClientConfig has no runner field); four read-only
+clink clients in pal/cli_clients/ (Read, Grep and Glob only, dontAsk, no MCP servers, home and
+secret-file reads denied); MODELS.md tier C and the matching PHASES.md and SKILL.md changes.
+Pool jobs: P3 digest and P8 neutral review via PAL chat, P5 drift first pass via clink. Pool
+models never run scripts or builds, touch git, apply fixes, give verdicts or talk to the user;
+Claude checks their output. P0 consent is per repo and per recipient, transcripts separately.
+
+Review: a three-lens adversarial workflow (scripts, security, docs; each finding independently
+re-verified) confirmed 23 findings, rejected none. All were fixed. The main one changed the design:
+the first draft gave the clients a shell under bypassPermissions with a git deny list, which the
+security lens showed was bypassable (PowerShell tool, inherited PAL environment keys, vault CLI).
+
+Dependency: stock PAL clink rejects any client not named claude, codex or gemini, and one
+rejected file stops the whole registry loading. The runner-field patch is BAS-More/PAL-MCP#7
+(commit 72ecb2c, open). install-clink refuses on the live PAL and accepts a checkout of #7.
+
+Validation: run-tests.mjs passed 83/83 (27 new; the PR #7 runner check ran with RAC_PAL_PATCHED
+pointing at a checkout of #7, and is a no-op without it); check-invariants.sh passed; no em-dash;
+git diff --check clean.
+model-pick against live OpenRouter prices on 2026-10-20 ranked GLM 5.3 cheapest for every job.
+Not verified end to end: 9router on 127.0.0.1:20128 accepted connections but answered nothing
+within 10 s, and PAL chat probes to all four pool models timed out, so no pool model or clink
+client has been exercised live. MiMo's route uses OpenRouter, whose vault key is expired.
