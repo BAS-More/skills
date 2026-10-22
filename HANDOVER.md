@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PR #245 plus two unverified review-bot findings, recorded under "Third stretch".
+**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PRs #245 and #246 (stacked) plus two unverified review-bot findings, recorded under "Third stretch" and "Fourth stretch".
 **Updated:** 2026-10-22 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -824,7 +824,7 @@ them as designs, not code:
 
 | Decision | Answer | Implementation note |
 | --- | --- | --- |
-| AC-3: how to enforce one source of truth for the event type set | catalog test | `EVENT_TYPES` (`lib/events/schema.ts:116`) and the `check (type in (...))` in `0001_schema.sql:118` are two hand-maintained copies of the same 12 strings. 0001 is the ONLY definition site (verified). A test must assert set equality in BOTH directions, carry a literal floor of 12, and assert exactly one definition site so a later migration redefining it cannot leave the test comparing dead DDL |
+| AC-3: how to enforce one source of truth for the event type set | catalog test, IMPLEMENTED in #246 | `EVENT_TYPES` (`lib/events/schema.ts:116`) and the `check (type in (...))` in `0001_schema.sql:118` are two hand-maintained copies of the same 12 strings. 0001 is the ONLY definition site (verified). A test must assert set equality in BOTH directions, carry a literal floor of 12, and assert exactly one definition site so a later migration redefining it cannot leave the test comparing dead DDL |
 | AC-12 / DL-4: how to record the transport ordering | mark AC-12 met, supersede DL-4 | SEE THE CORRECTION BELOW |
 | NFR-2: does "Zod at every trust boundary" mean Zod specifically | add Zod at that boundary | `app/api/notifications/act/route.ts:137` validates `id`, `action`, `exp`, `token` by hand. The Zod schema MUST reuse the existing `UUID_RE` / `BASE64URL_RE` / `/^\\d+$/` constants and must NOT use `z.string().uuid()`: the GET page reflects all four values into HTML attributes and the safety argument is that those exact charsets contain no quote, angle bracket or space. Zod's `.uuid()` accepts a different set. The eleven malformed-link cases in `tests/api/notifications-act.test.ts` (including two XSS breakout attempts) are the equivalence proof |
 | NFR-5: patch coverage or the global aggregate | ratify the aggregate | Enforced today is the global aggregate in `vitest.config.ts:141-145` (lines/statements/functions 95, branches 90). No CI step has ever diffed a base ref, so patch coverage was never the bar. Ratify in NFR-4's form, with the date. Keep the second clause ("every AC has a citing test") unchanged; the sub-question of whether a citing AC must come from the PRD was NOT settled |
@@ -869,6 +869,66 @@ with a positive control that a non-private task's does), because PGlite has no R
 server.
 And the 23-row verdict table (9 HOLDS / 14 PARTIAL / 0 FAILS over 124 arms) is stale
 against the merged tree; only re-running the judge-and-refute pass updates it honestly.
+
+### Fourth stretch: AC-3 implemented, and the two findings still unverified after a second attempt
+
+ONE of the four answered decisions is now implemented. AC-3 is done in draft PR #246,
+which is STACKED ON #245 (its base is `claude/byahad-conformance-reason-guard`, not
+`main`), because #245's guard is what forces AC-3's reason in
+`tests/db/prd-conformance.e2e.test.ts` to be rewritten when AC-3 leaves the open-decision
+list. Merge #245 first or #246's diff will read oddly.
+
+`tests/unit/event-type-catalog.test.ts` asserts that `EVENT_TYPES`
+(`lib/events/schema.ts:116`) and the `check (type in (...))` on `events.type`
+(`0001_schema.sql:118`) are the same SET, in both directions, with a literal floor of 12
+on each side, and that exactly ONE live migration defines that constraint. The
+single-site rule matters more than it looks: without it a later migration could drop and
+recreate the constraint and leave the test comparing dead DDL while still passing.
+Comment lines are stripped before the scan, because 0009 and 0012 both carry a
+commented-out example of this constraint shape for `notifications` and a commented
+example must not count as a definition site. 5 of 5 mutations killed, including the two
+that matter most: a type added to one side only (each direction tested separately) and a
+type RENAMED on one side so the counts still match while the sets differ. Gate: 4/4
+tests, `tsc` 0, `biome` 0.
+
+THE TWO REVIEW-BOT FINDINGS ARE STILL UNVERIFIED after a second attempt. The adversarial
+verification workflow was launched again and stopped again before any agent returned, so
+its journal holds two `started` records and zero verdicts. Nothing in the finding table
+under "Third stretch" has changed, and the facts recorded there are still the full extent
+of what is established. If you pick this up, the single most valuable thing you can do is
+answer the two questions named there, because each one decides its finding:
+
+1. Is `leaf` at `lib/bridges/orca-hook-parse.ts:116` an orca pane identifier, or an agent
+   id an operator configures to match their token? Trace it to the raw hook input. If it
+   is a pane id, the token binding shipped in #244 breaks that emitter in production.
+2. Were the pre-0024 privacy clauses on `tasks_select` bypassed by `byahad_dashboard`
+   too? If yes, the Command Centre finding is a pre-existing gap 0024 does not close
+   rather than a regression it introduces, and the right response is to correct the
+   migration header's overclaim and report the gap, not to build dashboard-side
+   filtering.
+
+STILL NOT DONE, and each is a real gap rather than a formality:
+
+- THREE DECISIONS REMAIN UNIMPLEMENTED: AC-12/DL-4, NFR-2, NFR-5. Their designs are in
+  the "Third stretch" table. The NFR-2 constraint is the one that is easy to get wrong
+  and expensive to get wrong: reuse the route's existing regexes, never
+  `z.string().uuid()`.
+- NO FULL FIVE-GATE RUN EXISTS AGAINST POST-MERGE `main` (`3eeaa5c`). The passing
+  117-file / 1306-test run was on the pre-merge integrated tree, which differs from
+  `3eeaa5c` only in being the squash of the same two changes, but "should be identical"
+  is not a gate result.
+- THE 23-ROW PRD VERDICT TABLE (9 HOLDS / 14 PARTIAL / 0 FAILS over 124 arms) IS STALE
+  against the merged tree. Only re-running the judge-and-refute pass updates it honestly;
+  editing the table by hand would be the circular move the conformance suite's header
+  warns about.
+- THE REALTIME LEG OF AC-6 IS UNVERIFIED. Narrowing `events_select` stops a private
+  payload being read; whether it stops the payload being PUSHED depends on Supabase
+  Realtime re-evaluating RLS per subscriber, which this repo asserts only in a migration
+  header comment. PGlite has no Realtime server, so it cannot be observed here. The check
+  needs a live project: subscribe as a non-creator org member, have an admin create a
+  private task, confirm no envelope arrives, with a positive control that a non-private
+  task's envelope does. It was not attempted, because doing it means writing data to a
+  live project and prod work needs Avi's explicit go-ahead.
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 

@@ -69,6 +69,19 @@
 > `claude/byahad-ac6-privacy-and-token-binding`, which a push recreated after GitHub had
 > deleted it on merge; `git push --delete` is blocked in that environment.
 
+> **Update 2026-10-22, final state of that session.** One of the four decisions is
+> implemented: AC-3, in draft PR #246, which is STACKED on #245 (base is
+> `claude/byahad-conformance-reason-guard`, not `main`), so merge #245 first. Three remain
+> unimplemented (AC-12/DL-4, NFR-2, NFR-5) with designs in `HANDOVER.md`. The two
+> review-bot findings are STILL UNVERIFIED after a second attempt that returned no
+> verdicts, so they remain in `main` unexamined, and `HANDOVER.md` -> "Fourth stretch"
+> names the one question that decides each. Three gaps are open and none is a formality:
+> no full five-gate run exists against post-merge `main` (`3eeaa5c`); the 23-row PRD
+> verdict table is stale against the merged tree and only re-running the judge-and-refute
+> pass updates it honestly; and the Realtime leg of AC-6 cannot be observed from PGlite
+> and needs a live project, which was not attempted because it means writing data to a
+> live project.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
