@@ -595,3 +595,137 @@ on this fork; recorded under "BAS-More fork deviations". `scripts/check-invarian
 `claude plugin validate . --strict` pass.
 
 Remaining: owner review and merge of the sync PR, then close PR #15.
+
+## Session 2026-10-15: `review-and-continue` added to `personal/` (Claude Code, branch `feat/review-and-continue-skill`)
+
+Added `skills/personal/review-and-continue/`, a model-invoked skill for resuming a project: it
+inventories repos, worktrees, stashes, recent sessions, docs and the code graph, secures
+uncommitted work as draft PRs, records doc-vs-code drift, applies the user's remediation
+decisions, gets a cross-vendor review, and hands a to-do list to `/goal`.
+
+- Bucket `personal/`, because it depends on the BAS-More setup (PAL, avios-context, total-recall,
+  `/goal`). It is therefore absent from `.claude-plugin/plugin.json` and the top-level README and
+  has no docs page, per the fork deviations in `CLAUDE-PROJECT-RULES.md`.
+- Three zero-dependency Node scripts (`repo-state`, `sessions`, `doc-refs`) with 20 tests under
+  `scripts/test/`. They run under the root `npm test`.
+- Reviewed before commit by a 10-agent Claude review and three rounds with `openai/gpt-5.6-sol`
+  through PAL. Every confirmed finding was fixed; the last round's four fixes were not re-reviewed.
+
+Checks: `./scripts/check-invariants.sh` reports all invariants hold; `npm test` result is in the PR.
+Remaining: owner review and merge of the PR. This does not change the project-memory work above.
+
+## Session 2026-10-15: `review-and-continue` first-run defects fixed (Claude Code, branch `fix/review-and-continue-first-run-defects`)
+
+The skill's first live run (BAS-More/MAH) surfaced six defects; all are addressed in this branch.
+
+- Self-test: `node --test "<abs path>/*.test.mjs"` through a path with a space matched 0 files and
+  exited 0. New `scripts/run-tests.mjs` passes each file by path and fails on 0 tests; SKILL.md
+  now documents it.
+- `repo-state`: `origin/HEAD` (short name `origin`) was reported as a pushed branch with no PR.
+  Symrefs are skipped, and pushed branches are compared against the remote's default branch, so a
+  local default that is behind no longer flags merged work.
+- `repo-state`: squash-merged branches were reported as unsaved work (100 of 110 refs on MAH).
+  Branches are now classified with merged-PR data (`gh pr list --state merged`): `landed`,
+  `after-merge` (tail commits past the merged PR head, reported in `afterMergeTails`), `on-remote`,
+  or `at-risk` (commits on no remote, the only case left in `unpushedBranches`). Without PR data
+  nothing is called landed.
+- PHASES.md: desktop-app sessions are read through the ccd session tools (P1, P3); cloud and phone
+  sessions are recorded as not readable locally. P2 requires a CI-regression review before pushing
+  onto a branch that already has a PR. P0 step 0 and P7 step 0 check for another live session
+  continuing the same run.
+
+- A 3-lens adversarial review of the first version (18 agents) confirmed 15 findings, all fixed with
+  tests: failed git counts now mean at-risk (never safe); "on a remote" is checked against live
+  server heads (`git ls-remote`), not possibly stale tracking refs; only PRs merged into the default
+  branch count; tails exclude merge and default-branch commits and are emitted as `tailCommits`;
+  `ahead` branches are classified too; the base remote is not assumed to be `origin`; the runner
+  counts executed tests per file (a file registering none, or only skipped tests, fails).
+
+- Round 2 (11 agents) confirmed 9 more, all fixed with tests: every local branch is now classified
+  (a branch whose server copy was deleted but not pruned looked "in sync" and was omitted); stale
+  tracking refs are never reported as pushed; detached-worktree orphan counts use live heads and
+  fail closed; a merge-only tail after a merged PR is landed only if nothing past the PR head is off
+  the live remotes; describe() suites do not count as tests; sessions record every `cwd` (`cwds`).
+
+- Round 3 (12 agents, the last round the skill's own 3-round cap allows) confirmed 10; 9 fixed with
+  tests: unpushed merge commits after a merged PR are checked (a merge whose tree differs from a
+  clean re-merge of its parents makes the branch at-risk); a clone that has not fetched no longer
+  gets false at-risk branches (tracking refs of branches still live on the server count); in-sync
+  branches are skipped (100-branch repo: 3.4 s, was 16-33 s; main 1.6 s); `ls-remote` runs
+  non-interactive with a 15 s timeout; local-branch upstreams and remote names with a slash are
+  handled; unreadable worktrees and local-only tags are reported.
+- Not fixed, pre-existing: unpushed commits inside submodules are not inventoried (findRepos stops
+  at the superproject). Proposed as a follow-up.
+
+Checks: 35 new tests in `scripts/test/first-run.test.mjs` (55 in the skill); results are in the PR.
+Remaining: owner review and merge of the PR.
+
+
+## Session 2026-10-18: review-and-continue runtime portability
+
+Scope: skills/personal/review-and-continue; isolated branch codex/review-and-continue-portable.
+Supports native Claude Code and Codex capabilities, inherited models and already granted scoped
+authorization. Total Recall remains session memory; Knowledge-Graph replaces Graphiti references
+for fresh repository context. No external vendor payloads sent by this change.
+
+Local transcript inventory now reads both Claude projects and Codex sessions, including linked
+worktree turn-context cwds, current cwd and activity times. It filters injected instructions and
+duplicate Codex event records. Desktop/cloud completeness still requires native tools and is
+explicitly unverified when unavailable. Windows short/long path aliases resolve before matching.
+
+Source impact: listSessions callers are the CLI and existing session tests; readSession and
+humanText are private to that module. No graph tooling configured in this checkout; graph
+checks skipped under project policy. No dependency, bucket or plugin-registration changes.
+
+Validation: node skills/personal/review-and-continue/scripts/run-tests.mjs passed 56/56
+(182765 ms); focused Codex regression passed; git diff --check passed. The first full run
+passed the original 55 tests but exposed a Windows path-alias defect in the new regression;
+realpath normalization corrected it before the successful full rerun.
+Parent review clarified that only conversational memory write-back requires P9; repository
+graph refresh remains under the project workflow. Existing session fixtures and CLI checks
+now use isolated Claude/Codex roots, never the account transcript store. The six affected
+session/CLI tests passed after these changes. Publication invariants, plugin-version check
+and git diff --check passed; repo-state completed successfully (--no-gh, PR classification
+unverified). Skill gitleaks scan passed. Publication remains for parent review; no push or PR
+created by this worker.
+
+
+## Session 2026-10-20: review-and-continue cheap-model tier
+
+Scope: skills/personal/review-and-continue; branch feat/review-and-continue-cheap-models.
+Owner request: pick the cheapest suitable model per job from GLM 5.3, Kimi K3, MiMo V2.6 Pro and
+Qwen3.8 Max. Owner decisions: rule plus pool (not a fixed list); per-repo P0 consent per vendor; tool
+use through PAL clink; two PRs, nothing installed until the PAL patch is merged.
+
+Added: model-pool.json (with each route's recipients); scripts/model-pick.mjs (ranks the pool
+per job by estimated USD from OpenRouter's public list prices, reachability checked per channel,
+a reason for every exclusion; exit 1 prices unavailable, 3 bad input); scripts/install-clink.mjs
+(dry run by default; refuses on a PAL whose CLIClientConfig has no runner field); four read-only
+clink clients in pal/cli_clients/ (Read, Grep and Glob only, dontAsk, no MCP servers, home and
+secret-file reads denied); MODELS.md tier C and the matching PHASES.md and SKILL.md changes.
+Pool jobs: P3 digest and P8 neutral review via PAL chat, P5 drift first pass via clink. Pool
+models never run scripts or builds, touch git, apply fixes, give verdicts or talk to the user;
+Claude checks their output. P0 consent is per repo and per recipient, transcripts separately.
+
+Review: a three-lens adversarial workflow (scripts, security, docs; each finding independently
+re-verified) confirmed 23 findings, rejected none. All were fixed. The main one changed the design:
+the first draft gave the clients a shell under bypassPermissions with a git deny list, which the
+security lens showed was bypassable (PowerShell tool, inherited PAL environment keys, vault CLI).
+
+Dependency: stock PAL clink rejects any client not named claude, codex or gemini, and one
+rejected file stops the whole registry loading. The runner-field patch is BAS-More/PAL-MCP#7
+(commit 72ecb2c, open). install-clink refuses on the live PAL and accepts a checkout of #7.
+
+Validation: run-tests.mjs passed 83/83 (27 new; the PR #7 runner check ran with RAC_PAL_PATCHED
+pointing at a checkout of #7, and is a no-op without it); check-invariants.sh passed; no em-dash;
+git diff --check clean.
+model-pick against live OpenRouter prices on 2026-10-20 ranked GLM 5.3 cheapest for every job.
+Not verified end to end: 9router on 127.0.0.1:20128 accepted connections but answered nothing
+within 10 s, and PAL chat probes to all four pool models timed out, so no pool model or clink
+client has been exercised live. MiMo's route uses OpenRouter, whose vault key is expired.
+
+Follow-up 2026-10-20 (branch fix/rac-pool-route-recipients): all four pool routes answered
+HTTP 200 through 9router with its existing OpenRouter key (no new key minted; the vault holds
+none). OpenRouter served GLM via Morph, Kimi via InferenceNet and MiMo via Novita, not the model
+vendors, so model-pool.json `route` and the MODELS.md egress text now name "OpenRouter and the
+hosts it routes to" as the consent recipient. claude-qwen answers through clink (PR #28).
