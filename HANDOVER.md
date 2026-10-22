@@ -305,6 +305,79 @@ started.
   did not notice until the run was nearly finished. It is patched, and the fan-in is now
   per-requirement with each agent reading its own complete evidence file.
 
+### Second half of the session: four owner decisions answered, and the work they unlocked
+
+Avi answered four of the seven open questions on 2026-10-22. The answers and what each
+turned into:
+
+| Decision | Answer | State |
+| --- | --- | --- |
+| Does AC-6 privacy govern DERIVED COPIES of a private item? | gate them | implemented, migration 0024, PR pending |
+| Should a private PROJECT hide its non-private tasks? | containment | implemented, same migration |
+| Should an agent token be bound to its own agent? | bind to the subject | committed, `10e6905` |
+| `npm audit`: ratify `high` or enforce 0? | ratify `high` | committed, `2bbc5c4` |
+
+THREE QUESTIONS REMAIN unanswered and still block their requirements: AC-3 (derive the
+`events.type` CHECK from `EVENT_TYPES`, or pin it with a catalog test), AC-12 (DL-4
+transport ordering is inverted in the shipped system and there is no transport seam), and
+NFR-5 (patch coverage versus the global aggregate, and whether a citing AC must come from
+the PRD).
+
+### What the AC-6 implementation looks like, and the two things to know before touching it
+
+`supabase/migrations/0024_private_subject_visibility.sql` adds
+`private.subject_is_visible(org_id, subject_kind, subject_id)` and routes five policies
+through it: `tasks_select` (for containment) and the four derived tables
+(`events`, `activity_feed`, `notifications`, `remediation_suggestions`), none of which had
+any privacy clause before. `tests/db/private-subject-visibility.test.ts` carries 49 tests.
+
+1. THE HELPER MUST STAY `SECURITY DEFINER`, and migration 0023 went from
+   defence-in-depth to load-bearing because of it. The helper reads `tasks` and
+   `projects` from inside a policy on a different table; without definer rights that read
+   recurses into `tasks_select`. With definer rights it must keep 0023's
+   `set search_path = ''` and fully-qualified relations, or a caller can shadow those
+   tables with temp tables and defeat AC-6 exactly as 0023 proved was possible for
+   `memberships`.
+
+2. AN INLINE SUBQUERY IN A POLICY IS ITSELF RLS-FILTERED, which is how the first version
+   of the containment clause read as correct and did nothing. It inlined
+   `not exists (select 1 from public.projects p where p.id = tasks.project_id and
+   p.is_private and p.created_by <> auth.uid())`. `projects_select` already hid the
+   private project from the caller, so the subquery found nothing, the `not exists` was
+   trivially true, and the contained task stayed visible. The gate inverted itself: the
+   better `projects_select` hid the project, the less the check could see it. It only
+   surfaced because the test asserted on the task ROW separately from its derived rows.
+
+### The Realtime leg of AC-6 is NOT verified, and cannot be from here
+
+Narrowing `events_select` stops a private payload being READ. Whether it stops the
+payload being PUSHED depends on Supabase Realtime re-evaluating RLS per subscriber, which
+this repository asserts only in a migration header comment ("verified live at the gate",
+`supabase/migrations/0005_realtime_publication.sql`). A PGlite harness has no Realtime
+server, so the policy is proven and the push is not. Whoever ships this should subscribe
+as a non-creator org member, have an admin create a private task, and confirm no envelope
+arrives, with a positive control that a non-private task's envelope does.
+
+### Method notes worth carrying, all of them learned the hard way
+
+- A CHANGE THAT BREAKS NOTHING MAY BE GATING NOTHING. Applying 0024 left all 28 db suites
+  and 283 tests green on the first run. That was the warning, not the reassurance: no
+  existing test ever read a private task's derived rows.
+- MUTATE EVERY CLAUSE SEPARATELY, NOT THE FEATURE. Four mutations of the obvious kind all
+  killed cleanly and taught nothing. The two that looked redundant (the admin bypass and
+  the creator clause) were the ones that exposed real gaps, because the admin was also the
+  creator of every private item seeded, so the admin clause was unobservable.
+- A MUTATION HARNESS MUST VERIFY ITS OWN EDIT APPLIED. Mine did not, for most of this
+  session. One anchor matched a textually identical line in a different branch of the same
+  function, so the result read "not killed" when the truth was "not applied". The two are
+  indistinguishable without a hash check, and that is the same vacuity class the harness
+  exists to find.
+- A STOPPED MUTATION RUN CAN LEAVE THE TREE MUTATED. Stopping the final run left migration
+  0024 missing an admin bypass; it was restored from a backup taken before the run, and
+  found only because the tree was checked before committing rather than after.
+- NEVER MUTATE THE WORKING TREE WHILE A SUITE READS IT. Three background runs in this
+  session were contaminated by a concurrent edit or branch switch and had to be discarded.
+
 ### Still open, and not this repository's work
 
 Seven decisions in byahad need an owner. The largest: whether AC-6's privacy governs

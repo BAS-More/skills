@@ -35,6 +35,16 @@
 >
 > See `HANDOVER.md` -> "Session 2026-10-21/22" for what was done in byahad, including the
 > four things that session got wrong.
+>
+> **Update 2026-10-22, later:** Avi answered four of the seven byahad owner decisions, and
+> the work they unlocked is in flight THERE, not here. Still nothing moved in this
+> repository beyond this handover pair. Three byahad decisions remain open (AC-3, AC-12,
+> NFR-5). If you are picking up the byahad thread rather than this one, read
+> `HANDOVER.md` -> "Second half of the session" first: it records two traps that cost real
+> time (a SECURITY DEFINER helper that must stay definer or AC-6 silently reopens, and an
+> inline subquery in an RLS policy being RLS-filtered itself, which made a containment
+> gate read as correct while doing nothing), plus the fact that the Realtime half of AC-6
+> cannot be verified from a PGlite harness and needs a live check.
 
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
