@@ -35,6 +35,39 @@
 >
 > See `HANDOVER.md` -> "Session 2026-10-21/22" for what was done in byahad, including the
 > four things that session got wrong.
+>
+> **Update 2026-10-22, later:** Avi answered four of the seven byahad owner decisions, and
+> the work they unlocked is in flight THERE, not here. Still nothing moved in this
+> repository beyond this handover pair. Three byahad decisions remain open (AC-3, AC-12,
+> NFR-5). If you are picking up the byahad thread rather than this one, read
+> `HANDOVER.md` -> "Second half of the session" first: it records two traps that cost real
+> time (a SECURITY DEFINER helper that must stay definer or AC-6 silently reopens, and an
+> inline subquery in an RLS policy being RLS-filtered itself, which made a containment
+> gate read as correct while doing nothing), plus the fact that the Realtime half of AC-6
+> cannot be verified from a PGlite harness and needs a live check.
+
+> **Update 2026-10-22, latest. The three-open-decisions line above is out of date, and so
+> is "in flight".** Avi merged BOTH byahad PRs (#243, #244); `main` there is `3eeaa5c`.
+> There were FOUR decisions left, not three (NFR-2 was missed), and all four are now
+> answered but NONE is implemented: AC-3 -> catalog test; AC-12 -> mark met and supersede
+> DL-4; NFR-2 -> add Zod at `app/api/notifications/act/route.ts`; NFR-5 -> ratify the
+> global aggregate. Patches for all four were drafted and abandoned unverified, so treat
+> them as designs. Still nothing moved in THIS repository beyond this handover pair.
+>
+> If you pick up byahad, read `HANDOVER.md` -> "Third stretch" before anything else. The
+> two things that matter most there: (1) TWO REVIEW-BOT FINDINGS landed on #244 minutes
+> before it merged and are UNVERIFIED, so they are now in `main`. One says the new token
+> binding may reject the documented machine emitter / shared-token sidecar, the other says
+> the Command Centre's BYPASSRLS reads never evaluate the new containment policy, and that
+> second mechanism is confirmed by the repo's own comment while its CLASSIFICATION
+> (regression versus pre-existing gap) is not; (2) AC-12's recorded blocker was simply
+> FALSE. The transport seam exists and AC-12 was already satisfied, which is corrected in
+> `HANDOVER.md` and in draft PR #245's body but is still wrong in #244's merged
+> description. A full five-gate dry-run of both PRs together did pass before they merged
+> (117 files / 1306 tests, build clean), and it is what exposed the integration defect
+> that draft PR #245 fixes. One chore needs a human: delete the stray remote branch
+> `claude/byahad-ac6-privacy-and-token-binding`, which a push recreated after GitHub had
+> deleted it on merge; `git push --delete` is blocked in that environment.
 
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.

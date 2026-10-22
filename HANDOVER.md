@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair.
+**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PR #245 plus two unverified review-bot findings, recorded under "Third stretch".
 **Updated:** 2026-10-22 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -304,6 +304,78 @@ started.
   which would have fed it 34% of the judge verdicts and 6% of the votes, cut mid-JSON. I
   did not notice until the run was nearly finished. It is patched, and the fan-in is now
   per-requirement with each agent reading its own complete evidence file.
+
+### Second half of the session: four owner decisions answered, and the work they unlocked
+
+Avi answered four of the seven open questions on 2026-10-22. The answers and what each
+turned into:
+
+| Decision | Answer | State |
+| --- | --- | --- |
+| Does AC-6 privacy govern DERIVED COPIES of a private item? | gate them | implemented, migration 0024, MERGED in #244 |
+| Should a private PROJECT hide its non-private tasks? | containment | implemented, same migration |
+| Should an agent token be bound to its own agent? | bind to the subject | committed, `10e6905` |
+| `npm audit`: ratify `high` or enforce 0? | ratify `high` | committed, `2bbc5c4` |
+
+THOSE REMAINING QUESTIONS WERE ANSWERED LATER THE SAME DAY. See "Third stretch" below
+for the answers, and for the correction that AC-12's recorded blocker was false: the
+transport seam does exist. There were FOUR remaining, not three, because NFR-2 was the
+fourth and was missed in this list.
+
+### What the AC-6 implementation looks like, and the two things to know before touching it
+
+`supabase/migrations/0024_private_subject_visibility.sql` adds
+`private.subject_is_visible(org_id, subject_kind, subject_id)` and routes five policies
+through it: `tasks_select` (for containment) and the four derived tables
+(`events`, `activity_feed`, `notifications`, `remediation_suggestions`), none of which had
+any privacy clause before. `tests/db/private-subject-visibility.test.ts` carries 49 tests.
+
+1. THE HELPER MUST STAY `SECURITY DEFINER`, and migration 0023 went from
+   defence-in-depth to load-bearing because of it. The helper reads `tasks` and
+   `projects` from inside a policy on a different table; without definer rights that read
+   recurses into `tasks_select`. With definer rights it must keep 0023's
+   `set search_path = ''` and fully-qualified relations, or a caller can shadow those
+   tables with temp tables and defeat AC-6 exactly as 0023 proved was possible for
+   `memberships`.
+
+2. AN INLINE SUBQUERY IN A POLICY IS ITSELF RLS-FILTERED, which is how the first version
+   of the containment clause read as correct and did nothing. It inlined
+   `not exists (select 1 from public.projects p where p.id = tasks.project_id and
+   p.is_private and p.created_by <> auth.uid())`. `projects_select` already hid the
+   private project from the caller, so the subquery found nothing, the `not exists` was
+   trivially true, and the contained task stayed visible. The gate inverted itself: the
+   better `projects_select` hid the project, the less the check could see it. It only
+   surfaced because the test asserted on the task ROW separately from its derived rows.
+
+### The Realtime leg of AC-6 is NOT verified, and cannot be from here
+
+Narrowing `events_select` stops a private payload being READ. Whether it stops the
+payload being PUSHED depends on Supabase Realtime re-evaluating RLS per subscriber, which
+this repository asserts only in a migration header comment ("verified live at the gate",
+`supabase/migrations/0005_realtime_publication.sql`). A PGlite harness has no Realtime
+server, so the policy is proven and the push is not. Whoever ships this should subscribe
+as a non-creator org member, have an admin create a private task, and confirm no envelope
+arrives, with a positive control that a non-private task's envelope does.
+
+### Method notes worth carrying, all of them learned the hard way
+
+- A CHANGE THAT BREAKS NOTHING MAY BE GATING NOTHING. Applying 0024 left all 28 db suites
+  and 283 tests green on the first run. That was the warning, not the reassurance: no
+  existing test ever read a private task's derived rows.
+- MUTATE EVERY CLAUSE SEPARATELY, NOT THE FEATURE. Four mutations of the obvious kind all
+  killed cleanly and taught nothing. The two that looked redundant (the admin bypass and
+  the creator clause) were the ones that exposed real gaps, because the admin was also the
+  creator of every private item seeded, so the admin clause was unobservable.
+- A MUTATION HARNESS MUST VERIFY ITS OWN EDIT APPLIED. Mine did not, for most of this
+  session. One anchor matched a textually identical line in a different branch of the same
+  function, so the result read "not killed" when the truth was "not applied". The two are
+  indistinguishable without a hash check, and that is the same vacuity class the harness
+  exists to find.
+- A STOPPED MUTATION RUN CAN LEAVE THE TREE MUTATED. Stopping the final run left migration
+  0024 missing an admin bypass; it was restored from a backup taken before the run, and
+  found only because the tree was checked before committing rather than after.
+- NEVER MUTATE THE WORKING TREE WHILE A SUITE READS IT. Three background runs in this
+  session were contaminated by a concurrent edit or branch switch and had to be discarded.
 
 ### Still open, and not this repository's work
 
@@ -689,6 +761,114 @@ and git diff --check passed; repo-state completed successfully (--no-gh, PR clas
 unverified). Skill gitleaks scan passed. Publication remains for parent review; no push or PR
 created by this worker.
 
+
+### Third stretch: both PRs merged, the last four decisions answered, and a guard that caught itself
+
+Avi merged BOTH open PRs during this stretch: #243 at 13:25 and #244 at 13:38. `main` is
+now `3eeaa5c` and carries everything from the remediation pass. Neither branch survives;
+GitHub deleted both on merge.
+
+READ THIS FIRST IF YOU ARE PICKING UP: two review-bot findings landed on #244 minutes
+before it merged, they are UNVERIFIED, and they are therefore now in `main`.
+
+| Finding | Site | Status |
+| --- | --- | --- |
+| Token binding may reject the documented machine emitter / shared-token sidecar when its session or pane UUID differs from the token's agent ID, stopping registration, status updates and alerts | `lib/http/handle-events-post.ts:410-413` | UNVERIFIED |
+| The Command Centre still shows non-private tasks inside private projects, because its BYPASSRLS reads never evaluate the new containment policy | `supabase/migrations/0024_private_subject_visibility.sql:132` | UNVERIFIED |
+
+Adversarial verification of both was in flight when this session was asked to stop, and
+produced NO completed verdicts, so nothing about either is settled. What was established
+first-hand, and is worth not re-deriving:
+
+- Each agent token resolves to exactly ONE `agentId`. Both resolvers return a single
+  `{orgId, agentId}` (`lib/auth/agent-token.ts`), so a token genuinely cannot cover two
+  agents.
+- `lib/bridges/orca-to-byahad.ts:78-79` and `lib/bridges/orca-sidecar.ts:175-176` both
+  emit `source` and `subject` as `{kind:'agent', id: event.agentId}`, and
+  `lib/bridges/orca-hook-parse.ts:116` sets that `agentId` from a value called `leaf`.
+  Whether `leaf` is an orca pane identifier or an operator-configured agent id is THE
+  question for finding 1, and it was not run down.
+- `supabase/migrations/0017_dashboard_suggestions_grant.sql:25` states that the
+  `byahad_dashboard` role "holds BYPASSRLS (verified)", and `lib/dashboard/queries.ts`
+  runs as that role. So finding 2's mechanism is real. What is NOT established is whether
+  it is a regression or a pre-existing gap 0024 fails to close: the privacy clauses on
+  `tasks_select` that predate 0024 would have been bypassed by that same role too. Settle
+  that before deciding the fix, because it changes the answer from "build dashboard-side
+  privacy filtering" to "correct an overclaiming migration header and report the gap".
+
+A FULL FIVE-GATE DRY-RUN of #243 and #244 TOGETHER passed before they merged: audit (both
+`--audit-level=high` and bare), typecheck, lint, 117 files / 1306 tests, and `npx next
+build`, with the tree verified clean at start and end. Coverage 95.91% statements, 91.41%
+branches, 96.27% functions, 96.47% lines. That run existed because neither PR had ever
+been gated against the other, and it earned its cost immediately:
+
+THE INTEGRATION DEFECT. #243's `tests/db/prd-conformance.e2e.test.ts` recorded AC-6 as
+NOT_COVERED because its owner decision was open. #244 ANSWERED that decision and shipped
+49 tests for it. Merged, that file asserted something false and stayed green, because the
+only rule a reason had to satisfy was being longer than 30 characters. The suite written
+to refuse vacuity contained it. Fixed on `claude/byahad-conformance-reason-guard`, DRAFT
+PR #245: every suite an `elsewhere:` reason names must exist on disk (with a citation
+floor, so stripping every path cannot satisfy the loop by iterating nothing), and the set
+of open `decision:` entries is a literal, so answering one fails the file until the reason
+is rewritten. 4 of 4 mutations killed.
+
+That guard then caught a second, PRE-EXISTING defect on its first run: AC-13 was
+classified `elsewhere:` while naming no suite at all. It is genuinely covered by
+`tests/unit/reconnect-controller.test.ts` (drop, refocus, online, visibility, plus the
+no-duplicate-subscription clause); the reason simply never said so. A guard that forces
+prose to name something checkable found a hole that reading the prose had not.
+
+THE LAST FOUR DECISIONS, ANSWERED 2026-10-22. None is implemented. Patches for all four
+were drafted and then abandoned unverified when the session was asked to stop, so treat
+them as designs, not code:
+
+| Decision | Answer | Implementation note |
+| --- | --- | --- |
+| AC-3: how to enforce one source of truth for the event type set | catalog test | `EVENT_TYPES` (`lib/events/schema.ts:116`) and the `check (type in (...))` in `0001_schema.sql:118` are two hand-maintained copies of the same 12 strings. 0001 is the ONLY definition site (verified). A test must assert set equality in BOTH directions, carry a literal floor of 12, and assert exactly one definition site so a later migration redefining it cannot leave the test comparing dead DDL |
+| AC-12 / DL-4: how to record the transport ordering | mark AC-12 met, supersede DL-4 | SEE THE CORRECTION BELOW |
+| NFR-2: does "Zod at every trust boundary" mean Zod specifically | add Zod at that boundary | `app/api/notifications/act/route.ts:137` validates `id`, `action`, `exp`, `token` by hand. The Zod schema MUST reuse the existing `UUID_RE` / `BASE64URL_RE` / `/^\\d+$/` constants and must NOT use `z.string().uuid()`: the GET page reflects all four values into HTML attributes and the safety argument is that those exact charsets contain no quote, angle bracket or space. Zod's `.uuid()` accepts a different set. The eleven malformed-link cases in `tests/api/notifications-act.test.ts` (including two XSS breakout attempts) are the equivalence proof |
+| NFR-5: patch coverage or the global aggregate | ratify the aggregate | Enforced today is the global aggregate in `vitest.config.ts:141-145` (lines/statements/functions 95, branches 90). No CI step has ever diffed a base ref, so patch coverage was never the bar. Ratify in NFR-4's form, with the date. Keep the second clause ("every AC has a citing test") unchanged; the sub-question of whether a citing AC must come from the PRD was NOT settled |
+
+AC-12 CORRECTION, recorded because the earlier handover and #244's body both state it
+wrongly. The claim was "DL-4 transport ordering is inverted in the shipped system and
+there is no transport seam". The second half is FALSE: `lib/realtime/transport.ts` declares
+`RealtimeTransport`, both `PollingAdapter` and `SupabaseRealtimeAdapter` declare
+`implements` against it, `useLiveChannel` receives a transport by injection and names no
+concrete adapter, and `tests/unit/polling-adapter.test.ts:257` pins conformance at compile
+time with a `const transport: RealtimeTransport = adapter` assignment. AC-12 as the PRD
+writes it was already SATISFIED and was mis-recorded as blocked. What actually remained
+was DL-4, which planned polling as the launch transport against a `GET /api/events/poll`
+endpoint THAT WAS NEVER BUILT, which is also why decision D-27 (the poller's cursor does
+not survive a resubscribe) is blocked, since every candidate fix guesses that endpoint's
+unwritten contract. Avi's answer: record Supabase Realtime as primary as shipped, keep
+`PollingAdapter` as reserved infrastructure, and leave D-27 open as a precondition of ever
+flipping back rather than of shipping.
+
+TWO ERRORS OF MINE IN THIS STRETCH, both found by checking rather than assuming:
+
+- My first full-gate script ran `npm run test:coverage`, which does not exist. The script
+  printed `FAIL lines: 0` and no summary, which READ LIKE A PASS. The real command is
+  `npm test` (`vitest run --coverage`). The rewritten script now takes every command from
+  `ci.yml` verbatim and fails loudly when no vitest summary appears, instead of reporting
+  a reassuring zero. A gate that cannot tell "nothing failed" from "nothing ran" is not a
+  gate. The same class of error as the earlier mutation harness that could not tell "I
+  broke nothing" from "I changed nothing".
+- I claimed the act route's malformed-parameter path was untested. False: my
+  `grep '^\\s*it('` missed an `it.each` block. It has eleven cases.
+
+ONE THING NEEDS A HUMAN. I pushed the conformance fix onto
+`claude/byahad-ac6-privacy-and-token-binding` before realising #244 had merged and GitHub
+had deleted that branch, so the push RECREATED a merged PR's branch. The work was moved to
+a fresh branch off `main` and the stray branch should be deleted, but
+`git push origin --delete` is blocked in this environment. Delete
+`claude/byahad-ac6-privacy-and-token-binding` on the remote; nothing depends on it.
+
+STILL OPEN beyond the above: the Realtime leg of AC-6 needs a live check (subscribe as a
+non-creator org member, have an admin create a private task, confirm no envelope arrives,
+with a positive control that a non-private task's does), because PGlite has no Realtime
+server.
+And the 23-row verdict table (9 HOLDS / 14 PARTIAL / 0 FAILS over 124 arms) is stale
+against the merged tree; only re-running the judge-and-refute pass updates it honestly.
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 
