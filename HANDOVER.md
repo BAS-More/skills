@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PRs #245, #246 (stacked on #245) and #247, recorded under "Third" to "Fifth stretch". BOTH review-bot findings are now VERIFIED; one is a shipped regression that breaks the primary ingestion path in byahad `main`, and #247 proves it.
+**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PRs #245, #246 (stacked on #245) and #247, recorded under "Third" to "Sixth stretch". ALL FOUR remaining owner decisions are now IMPLEMENTED in #246. BOTH review-bot findings are VERIFIED; one is a shipped regression that breaks the primary ingestion path in byahad `main`, and #247 proves it.
 **Updated:** 2026-10-22 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -1009,6 +1009,86 @@ STILL NOT DONE, carried forward unchanged from the fourth stretch:
 - THE 23-ROW PRD VERDICT TABLE IS STALE against the merged tree, and finding 1 means AC-7
   and NFR-8 in particular would now verdict differently.
 - THE REALTIME LEG OF AC-6 IS UNVERIFIED and needs a live project.
+
+### Sixth stretch: all four decisions implemented, and two guards that caught their own author
+
+THE OPEN-DECISION LIST IS NOW EMPTY. All four remaining decisions are implemented in draft
+PR #246 (stacked on #245: its base is `claude/byahad-conformance-reason-guard`, so merge
+#245 first), each dry-run before the next as the goal requires:
+
+| Decision | Answer | Dry-run |
+| --- | --- | --- |
+| AC-3 | catalog test | 4/4 tests, 5/5 mutations killed |
+| NFR-5 | ratify the global aggregate | 41/41 across every suite reading requirements.md |
+| AC-12 / DL-4 | AC-12 met, DL-4 superseded | 51/51 across the three realtime suites |
+| NFR-2 | add Zod at that boundary | 34/34 including 11 malformed cases, 5/5 mutations killed |
+
+THE ONE DETAIL NOT TO UNDO IN NFR-2. The Zod schema in
+`app/api/notifications/act/route.ts` REUSES the route's existing `UUID_RE`,
+`BASE64URL_RE` and digits regexes and deliberately does NOT use `z.string().uuid()`. The
+GET page reflects all four validated values into HTML attributes, and the reason that is
+safe is that those exact charsets contain no quote, angle bracket or space. Zod's own
+`uuid()` constrains version and variant nibbles that `UUID_RE` does not, so substituting
+it changes what is accepted at a sink whose safety depends on the charset. The eleven
+malformed-link cases already in `tests/api/notifications-act.test.ts`, two of them XSS
+breakout attempts, are the equivalence proof.
+
+AC-3's catalog test has one rule worth more than it looks: it asserts exactly ONE live
+migration defines the `events.type` CHECK. Without that, a later migration could drop and
+recreate the constraint and leave the test comparing dead DDL while still passing green.
+Comment lines are stripped before the scan, because 0009 and 0012 each carry a
+commented-out example of that constraint shape for `notifications`.
+
+TWO GUARDS CAUGHT THEIR OWN AUTHOR IN THIS STRETCH, which is the most useful thing to
+carry forward:
+
+1. #245's guard PASSED when it should have failed. When the four decisions were answered,
+   `prd-conformance.e2e.test.ts` still listed all four as open `decision:` entries and the
+   boundary test stayed green, because the rules bind the LITERAL to the MAP and nothing
+   in the tree says an owner has decided something. The rules catch a reason drifting from
+   the code it cites; they cannot notice the world moved. That limitation is now written
+   into the suite header rather than patched away: reading a `decision:` entry tells you
+   what the file was last told, not what is still open.
+2. #247's CI went RED, and correctly so, because its tests fail by design to prove the
+   credential-binding regression. A permanently red PR cannot merge, and "red on purpose"
+   is indistinguishable from "red because broken" in a checks list. The fix, stated on the
+   PR and not yet pushed: convert the three break-proving cases to Vitest `it.fails`. CI
+   goes green, the defect stays an executable claim rather than a comment, and it FLIPS TO
+   RED the moment someone fixes the binding, forcing whoever fixes it to convert these to
+   ordinary assertions. A known-defect test that silently keeps passing after the defect is
+   gone would be precisely the vacuity this whole pass has been removing. The three
+   controls stay ordinary assertions, since they must pass before and after any fix.
+
+THE FULL FIVE-GATE RUN AGAINST POST-MERGE `main` PLUS ALL FOUR DECISIONS was started on
+`6eb86a0` with the tree frozen. Audit at both `--audit-level=high` and bare PASS,
+typecheck PASS, lint PASS. The full suite and `next build` were still running when the
+session was asked to stop, so THAT GATE HAS NO RECORDED FINAL RESULT. The equivalent tree
+one commit earlier passed all five with 117 files / 1306 tests and a clean build, which is
+reason to expect it green but is not a result; #246's body asks a reviewer to confirm the
+suite and build on that head.
+
+THE 23-ROW VERDICT RE-RUN WAS ATTEMPTED AND STARVED. It was launched as a workflow with
+one judge and one adversarial refuter per requirement, every agent writing its verdict to
+disk the moment it had one so partial results would survive an interruption (the lesson
+from two earlier workflows that returned nothing). After eight minutes it had 2 agents
+started and 0 results, because the full test suite was saturating the CPU alongside it, so
+it was stopped rather than left to degrade the gate. THE LESSON FOR NEXT TIME: do not run
+the verdict pass and a full suite at once. Give the verdict pass a window with no suite
+running. Its script is preserved and resumable at
+`.claude/projects/-home-user-skills/<session>/workflows/scripts/prd-verdict-rerun-2026-10-22-wf_47b76d58-d31.js`,
+and its brief already carries both known defects so the agents do not rediscover them.
+
+STILL OPEN after this stretch:
+
+- THE CREDENTIAL-BINDING FIX, which needs Avi's choice between the two options written out
+  in "Fifth stretch". The regression is in `main` now.
+- The `it.fails` conversion on #247, which is decided and only needs pushing.
+- The Command Centre containment mirror: extend `lib/dashboard/queries.ts` to consult the
+  parent project where it already consults a task's own `is_private`.
+- A recorded final result for the five-gate run on `6eb86a0`.
+- The 23-row verdict table, still stale. Note that finding 1 means AC-7 and NFR-8 would
+  verdict differently, so the table cannot be hand-edited.
+- The Realtime leg of AC-6, needing a live project.
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 

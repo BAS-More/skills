@@ -97,6 +97,20 @@
 > mirrors only a task's own flag, not 0024's containment, so the fix is to extend the
 > existing mirror to consult the parent project.
 
+> **Update 2026-10-22, final. ALL FOUR remaining owner decisions are IMPLEMENTED** in
+> draft PR #246, stacked on #245, each dry-run before the next (AC-3 catalog test, NFR-5
+> ratified to the enforced aggregate, AC-12 met with DL-4 superseded, NFR-2 Zod at the
+> last hand-rolled boundary). The open-decision list is empty. Two things from
+> `HANDOVER.md` -> "Sixth stretch" matter most: the NFR-2 schema must keep reusing the
+> route's own regexes rather than `z.string().uuid()`, because an HTML-attribute sink
+> depends on those exact charsets; and both guards built this session caught their own
+> author, once by passing when it should have failed (the rules bind the literal to the
+> map, not the map to reality) and once by turning #247's CI red on purpose, whose fix is
+> decided (`it.fails`) and only needs pushing. Four things remain: the credential-binding
+> fix awaiting Avi's choice, a recorded final result for the five-gate run on `6eb86a0`,
+> the 23-row verdict re-run (which was starved by running alongside a full suite, so give
+> it a quiet window; its script is preserved and resumable), and the Realtime leg of AC-6.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
