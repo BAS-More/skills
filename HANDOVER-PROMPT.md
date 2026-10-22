@@ -82,6 +82,21 @@
 > and needs a live project, which was not attempted because it means writing data to a
 > live project.
 
+> **Update 2026-10-22, read this before anything else in byahad.** BOTH review-bot
+> findings are now VERIFIED, so do not re-verify them. One is a SHIPPED REGRESSION that
+> breaks the primary ingestion path in `main`: #244's credential binding rejects every
+> event from the documented emitter and the orca sidecar, always, because a token is
+> minted once per machine while every event's agent id is a per-session or per-pane uuid.
+> Nothing alerts either, since the sidecar is the sole writer of the two statuses that
+> alert. Draft PR #247 proves it with a test that fails on `main` and three controls that
+> pass, and deliberately does not fix it: the binding matches resolved decision CR-2
+> ("per-agent" tokens) and contradicts `docs/emitter-setup.md` ("once per machine"), so
+> the fix changes what the security boundary means and is Avi's call. The two coherent
+> options are written out in `HANDOVER.md` -> "Fifth stretch". The second finding is real
+> but narrow: `lib/dashboard/queries.ts` already mirrors RLS privacy in SQL on purpose and
+> mirrors only a task's own flag, not 0024's containment, so the fix is to extend the
+> existing mirror to consult the parent project.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.

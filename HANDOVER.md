@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PRs #245 and #246 (stacked) plus two unverified review-bot findings, recorded under "Third stretch" and "Fourth stretch".
+**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PRs #245, #246 (stacked on #245) and #247, recorded under "Third" to "Fifth stretch". BOTH review-bot findings are now VERIFIED; one is a shipped regression that breaks the primary ingestion path in byahad `main`, and #247 proves it.
 **Updated:** 2026-10-22 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -929,6 +929,86 @@ STILL NOT DONE, and each is a real gap rather than a formality:
   private task, confirm no envelope arrives, with a positive control that a non-private
   task's envelope does. It was not attempted, because doing it means writing data to a
   live project and prod work needs Avi's explicit go-ahead.
+
+### Fifth stretch: BOTH findings verified, and one of them breaks the ingestion path in main
+
+The two review-bot findings are no longer unverified. They were settled by reading the
+code and the operator docs directly, after two attempts to run an adversarial workflow
+were both stopped before any agent returned. Do not re-verify these; act on them.
+
+FINDING 1 IS A SHIPPED REGRESSION, AND IT IS THE MOST IMPORTANT THING IN THIS HANDOVER.
+#244's credential binding rejects EVERY event from the documented emitter and from the
+orca sidecar. Not intermittently. Always, by construction:
+
+| Source | What it establishes |
+| --- | --- |
+| `docs/emitter-setup.md:5` | mint a token ONCE PER MACHINE, `--agent <machine-name>` |
+| `docs/emitter-setup.md:34` | each Claude session becomes one agent, id = the session uuid |
+| `lib/bridges/orca-hook-parse.ts:98` | the orca agent id is the paneKey's trailing uuid, per pane |
+| `lib/auth/agent-token.ts` | both resolvers return a single `{orgId, agentId}` |
+
+The credential's `agentId` is a machine name chosen once; every event's `source.id` is a
+per-session or per-pane uuid minted later. `credentialSubjectRejection` requires them to
+be identical, so every such event is refused with `source_not_credential_owner`. And
+`docs/emitter-setup.md:35` records that the sidecar is the SOLE writer of `agents.status`
+for `waiting` and `blocked`, the only two states that alert, so nothing pages a human
+either.
+
+The existing suite cannot see this: every test that exercises the binding builds the
+envelope and the credential FROM THE SAME ID, which is the one configuration the
+documentation rules out. That is the same vacuity class this whole remediation pass has
+been clearing.
+
+Draft PR #247 proves it with `tests/unit/credential-binding-vs-documented-emitter.test.ts`:
+three cases driving the documented shapes, which FAIL on main, and three controls which
+pass, so a failure reads as strictness rather than a broken import. One control pins the
+attribution forgery that #244 set out to close, so whatever replaces the binding has to
+keep it closed. #247 deliberately does NOT fix the binding.
+
+WHY IT WAS NOT FIXED, AND THE DECISION IT NEEDS. The binding is consistent with a
+RESOLVED decision and inconsistent with the operator documentation:
+
+- `docs/phase-2-foundation/decisions-log.md:44` records "CR-2 RESOLVED by Avi: production
+  agent-auth = DB-backed hashed tokens, `agent_tokens` table (store sha256 hash, never
+  plaintext; PER-AGENT; revocable)".
+- `docs/emitter-setup.md:5` then documents one token PER MACHINE.
+
+So per-agent tokens were settled, and the emitter was documented per-machine afterwards.
+#244 implemented the CR-2 reading and broke the documented deployment. Two coherent
+resolutions, and choosing between them changes what the security boundary means, which is
+why it was escalated rather than decided:
+
+1. Treat the credential as a machine credential: relax the binding so a token may speak
+   for agents in its org, and close the escalation another way, for example only for
+   agents that token itself registered. Keeps the documented deployment and reinterprets
+   CR-2's "per-agent".
+2. Make the deployment per-agent: mint a token per session or pane so the binding holds as
+   written. Consistent with CR-2 as recorded, but sessions and panes are created
+   dynamically, so it needs runtime token minting that does not exist today.
+
+FINDING 2 IS REAL BUT RESOLVES DIFFERENTLY, and both of my earlier readings of it were
+wrong. It is not "the dashboard has no privacy filtering" and it is not "a pre-existing
+gap with nothing to do". `lib/dashboard/queries.ts` ALREADY mirrors RLS privacy in its own
+SQL, deliberately, with comments at lines 125, 132 and 164 citing the BYPASSRLS bypass as
+the reason it must. It carries twelve `is_private` references and filters `and not
+is_private` in several queries. What it mirrors is only a task's OWN flag, not 0024's
+CONTAINMENT, so a non-private task inside a private project is still returned to the
+Command Centre. The mirror exists and is now incomplete, which makes the fix a narrow,
+well-precedented one: extend the existing SQL mirror to consult the parent project, in the
+same places that already consult the task's own flag. The audit had already flagged this
+exact drift class at `lib/dashboard/queries.ts:122-128`, where a port "kept the org filter
+and silently lost the privacy clause".
+
+STILL NOT DONE, carried forward unchanged from the fourth stretch:
+
+- THREE DECISIONS UNIMPLEMENTED: AC-12/DL-4, NFR-2, NFR-5. Designs are in the "Third
+  stretch" table. All three are small; NFR-2 is the one that is easy and expensive to get
+  wrong, because its Zod schema must reuse the route's existing regexes and never
+  `z.string().uuid()`.
+- NO FULL FIVE-GATE RUN AGAINST POST-MERGE `main` (`3eeaa5c` at the time, now moved).
+- THE 23-ROW PRD VERDICT TABLE IS STALE against the merged tree, and finding 1 means AC-7
+  and NFR-8 in particular would now verdict differently.
+- THE REALTIME LEG OF AC-6 IS UNVERIFIED and needs a live project.
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 
