@@ -18,6 +18,24 @@
 > machine-checkable. `shellcheck` ran clean at `-S style` on all three shell scripts:
 > the egress denial that blocked it no longer applies in this environment.
 >
+> **Update 2026-10-22: nothing below moved.** That session's work was in
+> `BAS-More/byahad`, not here. Items 1 and 4 are untouched; items 2 and 3 remain done.
+> Two things it is worth knowing before you start:
+>
+> - Graph steps were skipped and not built. `.project-memory/` holds only `config.json`
+>   and `POLICY.md`, there is no `graph` command on PATH, and CLAUDE.md says to skip
+>   rather than install in that case. Graph readiness still has no acceptance evidence.
+> - `scripts/check-invariants.sh` rule 12's comment says the handover pair is exempt from
+>   the no-em-dash rule, but `EM_DASH_EXEMPT` lists only `CHANGELOG.md` and the two
+>   routing documents plus `docs/mcp-routing-benchmark/`. The pair is therefore NOT
+>   exempt. It passes today because both files contain zero em-dashes, so the exemption
+>   is dead code and the rule is live on them. Write these two files without em-dashes,
+>   or fix the array to match its comment. Deciding which is a small piece of work nobody
+>   has done.
+>
+> See `HANDOVER.md` -> "Session 2026-10-21/22" for what was done in byahad, including the
+> four things that session got wrong.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.

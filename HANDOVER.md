@@ -1,8 +1,8 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation. See "Session 2026-10-11".
-**Updated:** 2026-10-11 (Australia/Melbourne)
+**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation. See "Session 2026-10-11", then "Session 2026-10-21/22", which records that the 2026-10-21/22 session worked in `BAS-More/byahad` and advanced nothing here.
+**Updated:** 2026-10-22 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -221,6 +221,98 @@ receipts. Repository CI remains authoritative for their remaining gates. MAH's l
 session freshness check passed with all nine views and fingerprint
 `03424bdb1964993a731980ad3c6424c63de74112bb4adecee92148ffeb6a26e0`.
 
+
+## Session 2026-10-21/22: byahad PRD audit settled, remediation started, and this repository not advanced (Claude Code, branch `claude/repository-code-review-l65q2b`)
+
+**Read this before continuing the skills workstream: nothing in P0 to P4 moved.** This
+session's work was in a different repository, `BAS-More/byahad`. The routing benchmark,
+the project-memory continuation, and the two owner decisions listed in the prompt are
+exactly where 2026-10-11 left them. This section exists so a busy session is not mistaken
+for progress here. The only change to this repository is this handover pair.
+
+### Graph steps skipped, which CLAUDE.md asks to be stated
+
+`.project-memory/` holds `config.json` and `POLICY.md` and nothing else. There is no
+`graph` command on PATH and no graph engine in the checkout, so the documented
+session/freshness, context and upstream-impact workflow was skipped rather than built,
+which is what CLAUDE.md instructs when the tooling is absent. Installing it is
+project-memory setup work and was not authorized in this session. Graph readiness still
+has no acceptance evidence.
+
+### What was done in byahad, and where the detail lives
+
+All 23 Phase-2 PRD requirements were judged against `596f53c`, then every one of the 124
+independently-failable arms was refuted: 42 contested arms by two independent model
+lenses, 82 clean-HOLDS arms by one. Settled result: 9 HOLDS, 14 PARTIAL, 0 requirement
+level FAILS, with 52 blocking defects and 87 open questions that collapse into seven
+decisions for the owner.
+
+The settled table, the remediation plan, and the seven decisions are a Claude doc:
+`https://claude.ai/artifact/W48fj5ZCfuMpEYW1HzbNm3`. It is the source of truth for that
+work, not this file.
+
+Shipped: `byahad#236`, squash-merged as `ed71541`. Two fixes, both of which were live on
+`byahad` main rather than branch artifacts.
+
+1. Sentry was collecting credentials, cookies, request bodies and client IPs in every
+   environment. `resolveDataCollectionOptions` in `@sentry/core` branches on the
+   PRESENCE of `dataCollection`, not its content, so a block holding only commented-out
+   lines reading "to disable sending user data, uncomment the lines below" selected the
+   permissive DEFAULTS and did the opposite of what it said. This was the audit's only
+   arm settled at FAILS, on two lenses, with no test able to catch it.
+2. `npm audit` was exiting 1 on a high advisory (vite 8.2.0 to 8.2.2) on main itself. The
+   step is in CI but deliberately outside the required check name, so it was red without
+   blocking merges.
+
+Pending: branch `claude/byahad-nfr8-and-migration-guard` carries fixes 3 to 5 (an
+unauthenticated flood that consumed neither rate limiter because a missing Authorization
+header returned 401 before both; the shipped rate-limit capacities being unreachable from
+any test; and a down-migration pattern whose `^\s*` anchored only its first alternation,
+so five mid-line reversal forms passed it). Fixes 6 to 8 are specified in the doc and not
+started.
+
+### Method worth reusing, independent of either repository
+
+- Judging whether each requirement HOLDS finds defects. Tracing requirements to citing
+  tests finds nothing: a citation is satisfied by a comment.
+- Every guard was proven by mutation before being trusted. Several mutations changed a
+  design rather than confirming one, which is the point of running them.
+- The vacuity classes that kept recurring: `.every()` is true on an empty array; a
+  cross-tenant count is 0 when the other tenant has no row; `toHaveBeenCalledWith` passes
+  if any call matches; a subset assertion survives a dropped element; a duplicated test is
+  green by construction; a per-file check lets one bounded call excuse an unbounded
+  sibling; a floor derived from the loop it guards is not a floor; and a guard with no
+  positive control proves nothing.
+- Two defects in this session survived guards that already had positive controls, because
+  every sample in those controls shared a shape the bug did not have. A control proves the
+  harness can detect the bug it was written for, not bugs in general.
+
+### What I got wrong, recorded because the corrections are the useful part
+
+- I asserted that Sentry's transport exposes no per-request timeout and wrote that claim
+  into four byahad files as the justification for leaving an outbound call unbounded.
+  `BrowserTransportOptions.fetchOptions` exists and is spread into the fetch init. I had
+  checked `BaseTransportOptions` in `@sentry/core` and never looked at the browser
+  package's extension of it. Correcting it is fix 7 and is not yet done.
+- I reported an agent count of 345 over 254 arms. The real figures were 178 and 124: the
+  workflow journal is append-only across a dead first attempt and the live one, and I
+  counted both halves, so 23 requirements read as 46.
+- I said a concurrency cap of 2 was why a run was slow. The shards then visibly ran six
+  agents each, so that was not the binding constraint, though re-sharding did cut
+  throughput time about 3.5x.
+- A workflow's final synthesis step sliced its own prompt to 90000 and 60000 characters,
+  which would have fed it 34% of the judge verdicts and 6% of the votes, cut mid-JSON. I
+  did not notice until the run was nearly finished. It is patched, and the fan-in is now
+  per-requirement with each agent reading its own complete evidence file.
+
+### Still open, and not this repository's work
+
+Seven decisions in byahad need an owner. The largest: whether AC-6's privacy governs
+derived copies of a private item. Eight of that requirement's twelve arms turn on it, and
+all three candidate fixes change the schema or the authorization model. A private task's
+title currently ships in `events.payload` under a policy with no privacy clause, and
+`events` is on the realtime publication, so it reaches every org member live rather than
+only on request.
 
 ## Session 2026-10-11: the stated invariants are enforced, and the audit gate exists (Claude Code, branch `claude/repository-code-review-l65q2b`, PR #21 merged as `5951462`)
 
