@@ -107,9 +107,12 @@
 > author, once by passing when it should have failed (the rules bind the literal to the
 > map, not the map to reality) and once by turning #247's CI red on purpose, whose fix is
 > decided (`it.fails`) and only needs pushing. Four things remain: the credential-binding
-> fix awaiting Avi's choice, a recorded final result for the five-gate run on `6eb86a0`,
-> the 23-row verdict re-run (which was starved by running alongside a full suite, so give
-> it a quiet window; its script is preserved and resumable), and the Realtime leg of AC-6.
+> fix awaiting Avi's choice, the 23-row verdict re-run (which was starved by running
+> alongside a full suite, so give it a quiet window; its script is preserved and
+> resumable), the Command Centre containment mirror, and the Realtime leg of AC-6. The
+> five-gate run on `6eb86a0` PASSED and is recorded: 118 files / 1310 tests, clean build,
+> coverage above every floor. #247's red CI is fixed and pushed (`a2f58e3`, `it.fails`),
+> with the flip to red on a real fix verified by mutation.
 
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.

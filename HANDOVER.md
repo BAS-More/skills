@@ -1051,21 +1051,32 @@ carry forward:
    what the file was last told, not what is still open.
 2. #247's CI went RED, and correctly so, because its tests fail by design to prove the
    credential-binding regression. A permanently red PR cannot merge, and "red on purpose"
-   is indistinguishable from "red because broken" in a checks list. The fix, stated on the
-   PR and not yet pushed: convert the three break-proving cases to Vitest `it.fails`. CI
-   goes green, the defect stays an executable claim rather than a comment, and it FLIPS TO
-   RED the moment someone fixes the binding, forcing whoever fixes it to convert these to
-   ordinary assertions. A known-defect test that silently keeps passing after the defect is
-   gone would be precisely the vacuity this whole pass has been removing. The three
-   controls stay ordinary assertions, since they must pass before and after any fix.
+   is indistinguishable from "red because broken" in a checks list. FIXED AND PUSHED as
+   `a2f58e3`: the three break-proving cases are now Vitest `it.fails`, so CI is green, the
+   defect stays an executable claim rather than a comment, and the file FLIPS TO RED the
+   moment someone fixes the binding, forcing whoever fixes it to convert these to ordinary
+   assertions. A known-defect test that silently keeps passing after the defect is gone
+   would be precisely the vacuity this whole pass has been removing. The three controls
+   stay ordinary assertions, since they must pass before and after any fix.
+   THAT FLIP IS VERIFIED, AND THE FIRST ATTEMPT TO VERIFY IT FAILED, which is the useful
+   part. Relaxing only the `source` equality clause does NOT turn the file red, because the
+   `subject` clause still rejects the same envelope: the emitter is still broken and a
+   half-fix must not read as done. Relaxing BOTH clauses to org scope, which is what
+   admitting the documented emitter requires, does turn it red (3 failed). So the signal
+   fires when the documented envelope is ADMITTED, not when either clause is merely
+   touched. Had the mutation not been run, the docblock would have claimed a property the
+   test did not have.
 
-THE FULL FIVE-GATE RUN AGAINST POST-MERGE `main` PLUS ALL FOUR DECISIONS was started on
-`6eb86a0` with the tree frozen. Audit at both `--audit-level=high` and bare PASS,
-typecheck PASS, lint PASS. The full suite and `next build` were still running when the
-session was asked to stop, so THAT GATE HAS NO RECORDED FINAL RESULT. The equivalent tree
-one commit earlier passed all five with 117 files / 1306 tests and a clean build, which is
-reason to expect it green but is not a result; #246's body asks a reviewer to confirm the
-suite and build on that head.
+THE FULL FIVE-GATE RUN AGAINST POST-MERGE `main` PLUS ALL FOUR DECISIONS PASSED, on
+`6eb86a0`, tree verified clean at both ends: audit at both `--audit-level=high` and bare,
+typecheck, lint, 118 files / 1310 tests, and `npx next build`. Coverage 95.91% statements,
+91.34% branches, 96.27% functions, 96.47% lines, all above the `vitest.config.ts` floors
+that NFR-5 was ratified to in the same PR. This is a RECORDED RESULT, not an expectation
+inherited from a neighbouring commit, and it closes the gap the standing goal kept naming.
+One figure worth knowing before someone investigates it: branches moved 91.41% to 91.34%
+against the pre-merge tree. That is the NFR-2 refactor replacing a four-way compound `if`
+with a Zod schema, which REMOVES branch points rather than adding uncovered ones: fewer
+total branches, same uncovered set.
 
 THE 23-ROW VERDICT RE-RUN WAS ATTEMPTED AND STARVED. It was launched as a workflow with
 one judge and one adversarial refuter per requirement, every agent writing its verdict to
@@ -1082,10 +1093,8 @@ STILL OPEN after this stretch:
 
 - THE CREDENTIAL-BINDING FIX, which needs Avi's choice between the two options written out
   in "Fifth stretch". The regression is in `main` now.
-- The `it.fails` conversion on #247, which is decided and only needs pushing.
 - The Command Centre containment mirror: extend `lib/dashboard/queries.ts` to consult the
   parent project where it already consults a task's own `is_private`.
-- A recorded final result for the five-gate run on `6eb86a0`.
 - The 23-row verdict table, still stale. Note that finding 1 means AC-7 and NFR-8 would
   verdict differently, so the table cannot be hand-edited.
 - The Realtime leg of AC-6, needing a live project.
