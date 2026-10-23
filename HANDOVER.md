@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PR #245 plus two unverified review-bot findings, recorded under "Third stretch".
+**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PRs #245, #246 (stacked on #245) and #247, recorded under "Third" to "Sixth stretch". ALL FOUR remaining owner decisions are now IMPLEMENTED in #246. BOTH review-bot findings are VERIFIED; one is a shipped regression that breaks the primary ingestion path in byahad `main`, and #247 proves it.
 **Updated:** 2026-10-22 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -824,7 +824,7 @@ them as designs, not code:
 
 | Decision | Answer | Implementation note |
 | --- | --- | --- |
-| AC-3: how to enforce one source of truth for the event type set | catalog test | `EVENT_TYPES` (`lib/events/schema.ts:116`) and the `check (type in (...))` in `0001_schema.sql:118` are two hand-maintained copies of the same 12 strings. 0001 is the ONLY definition site (verified). A test must assert set equality in BOTH directions, carry a literal floor of 12, and assert exactly one definition site so a later migration redefining it cannot leave the test comparing dead DDL |
+| AC-3: how to enforce one source of truth for the event type set | catalog test, IMPLEMENTED in #246 | `EVENT_TYPES` (`lib/events/schema.ts:116`) and the `check (type in (...))` in `0001_schema.sql:118` are two hand-maintained copies of the same 12 strings. 0001 is the ONLY definition site (verified). A test must assert set equality in BOTH directions, carry a literal floor of 12, and assert exactly one definition site so a later migration redefining it cannot leave the test comparing dead DDL |
 | AC-12 / DL-4: how to record the transport ordering | mark AC-12 met, supersede DL-4 | SEE THE CORRECTION BELOW |
 | NFR-2: does "Zod at every trust boundary" mean Zod specifically | add Zod at that boundary | `app/api/notifications/act/route.ts:137` validates `id`, `action`, `exp`, `token` by hand. The Zod schema MUST reuse the existing `UUID_RE` / `BASE64URL_RE` / `/^\\d+$/` constants and must NOT use `z.string().uuid()`: the GET page reflects all four values into HTML attributes and the safety argument is that those exact charsets contain no quote, angle bracket or space. Zod's `.uuid()` accepts a different set. The eleven malformed-link cases in `tests/api/notifications-act.test.ts` (including two XSS breakout attempts) are the equivalence proof |
 | NFR-5: patch coverage or the global aggregate | ratify the aggregate | Enforced today is the global aggregate in `vitest.config.ts:141-145` (lines/statements/functions 95, branches 90). No CI step has ever diffed a base ref, so patch coverage was never the bar. Ratify in NFR-4's form, with the date. Keep the second clause ("every AC has a citing test") unchanged; the sub-question of whether a citing AC must come from the PRD was NOT settled |
@@ -869,6 +869,235 @@ with a positive control that a non-private task's does), because PGlite has no R
 server.
 And the 23-row verdict table (9 HOLDS / 14 PARTIAL / 0 FAILS over 124 arms) is stale
 against the merged tree; only re-running the judge-and-refute pass updates it honestly.
+
+### Fourth stretch: AC-3 implemented, and the two findings still unverified after a second attempt
+
+ONE of the four answered decisions is now implemented. AC-3 is done in draft PR #246,
+which is STACKED ON #245 (its base is `claude/byahad-conformance-reason-guard`, not
+`main`), because #245's guard is what forces AC-3's reason in
+`tests/db/prd-conformance.e2e.test.ts` to be rewritten when AC-3 leaves the open-decision
+list. Merge #245 first or #246's diff will read oddly.
+
+`tests/unit/event-type-catalog.test.ts` asserts that `EVENT_TYPES`
+(`lib/events/schema.ts:116`) and the `check (type in (...))` on `events.type`
+(`0001_schema.sql:118`) are the same SET, in both directions, with a literal floor of 12
+on each side, and that exactly ONE live migration defines that constraint. The
+single-site rule matters more than it looks: without it a later migration could drop and
+recreate the constraint and leave the test comparing dead DDL while still passing.
+Comment lines are stripped before the scan, because 0009 and 0012 both carry a
+commented-out example of this constraint shape for `notifications` and a commented
+example must not count as a definition site. 5 of 5 mutations killed, including the two
+that matter most: a type added to one side only (each direction tested separately) and a
+type RENAMED on one side so the counts still match while the sets differ. Gate: 4/4
+tests, `tsc` 0, `biome` 0.
+
+THE TWO REVIEW-BOT FINDINGS ARE STILL UNVERIFIED after a second attempt. The adversarial
+verification workflow was launched again and stopped again before any agent returned, so
+its journal holds two `started` records and zero verdicts. Nothing in the finding table
+under "Third stretch" has changed, and the facts recorded there are still the full extent
+of what is established. If you pick this up, the single most valuable thing you can do is
+answer the two questions named there, because each one decides its finding:
+
+1. Is `leaf` at `lib/bridges/orca-hook-parse.ts:116` an orca pane identifier, or an agent
+   id an operator configures to match their token? Trace it to the raw hook input. If it
+   is a pane id, the token binding shipped in #244 breaks that emitter in production.
+2. Were the pre-0024 privacy clauses on `tasks_select` bypassed by `byahad_dashboard`
+   too? If yes, the Command Centre finding is a pre-existing gap 0024 does not close
+   rather than a regression it introduces, and the right response is to correct the
+   migration header's overclaim and report the gap, not to build dashboard-side
+   filtering.
+
+STILL NOT DONE, and each is a real gap rather than a formality:
+
+- THREE DECISIONS REMAIN UNIMPLEMENTED: AC-12/DL-4, NFR-2, NFR-5. Their designs are in
+  the "Third stretch" table. The NFR-2 constraint is the one that is easy to get wrong
+  and expensive to get wrong: reuse the route's existing regexes, never
+  `z.string().uuid()`.
+- NO FULL FIVE-GATE RUN EXISTS AGAINST POST-MERGE `main` (`3eeaa5c`). The passing
+  117-file / 1306-test run was on the pre-merge integrated tree, which differs from
+  `3eeaa5c` only in being the squash of the same two changes, but "should be identical"
+  is not a gate result.
+- THE 23-ROW PRD VERDICT TABLE (9 HOLDS / 14 PARTIAL / 0 FAILS over 124 arms) IS STALE
+  against the merged tree. Only re-running the judge-and-refute pass updates it honestly;
+  editing the table by hand would be the circular move the conformance suite's header
+  warns about.
+- THE REALTIME LEG OF AC-6 IS UNVERIFIED. Narrowing `events_select` stops a private
+  payload being read; whether it stops the payload being PUSHED depends on Supabase
+  Realtime re-evaluating RLS per subscriber, which this repo asserts only in a migration
+  header comment. PGlite has no Realtime server, so it cannot be observed here. The check
+  needs a live project: subscribe as a non-creator org member, have an admin create a
+  private task, confirm no envelope arrives, with a positive control that a non-private
+  task's envelope does. It was not attempted, because doing it means writing data to a
+  live project and prod work needs Avi's explicit go-ahead.
+
+### Fifth stretch: BOTH findings verified, and one of them breaks the ingestion path in main
+
+The two review-bot findings are no longer unverified. They were settled by reading the
+code and the operator docs directly, after two attempts to run an adversarial workflow
+were both stopped before any agent returned. Do not re-verify these; act on them.
+
+FINDING 1 IS A SHIPPED REGRESSION, AND IT IS THE MOST IMPORTANT THING IN THIS HANDOVER.
+#244's credential binding rejects EVERY event from the documented emitter and from the
+orca sidecar. Not intermittently. Always, by construction:
+
+| Source | What it establishes |
+| --- | --- |
+| `docs/emitter-setup.md:5` | mint a token ONCE PER MACHINE, `--agent <machine-name>` |
+| `docs/emitter-setup.md:34` | each Claude session becomes one agent, id = the session uuid |
+| `lib/bridges/orca-hook-parse.ts:98` | the orca agent id is the paneKey's trailing uuid, per pane |
+| `lib/auth/agent-token.ts` | both resolvers return a single `{orgId, agentId}` |
+
+The credential's `agentId` is a machine name chosen once; every event's `source.id` is a
+per-session or per-pane uuid minted later. `credentialSubjectRejection` requires them to
+be identical, so every such event is refused with `source_not_credential_owner`. And
+`docs/emitter-setup.md:35` records that the sidecar is the SOLE writer of `agents.status`
+for `waiting` and `blocked`, the only two states that alert, so nothing pages a human
+either.
+
+The existing suite cannot see this: every test that exercises the binding builds the
+envelope and the credential FROM THE SAME ID, which is the one configuration the
+documentation rules out. That is the same vacuity class this whole remediation pass has
+been clearing.
+
+Draft PR #247 proves it with `tests/unit/credential-binding-vs-documented-emitter.test.ts`:
+three cases driving the documented shapes, which FAIL on main, and three controls which
+pass, so a failure reads as strictness rather than a broken import. One control pins the
+attribution forgery that #244 set out to close, so whatever replaces the binding has to
+keep it closed. #247 deliberately does NOT fix the binding.
+
+WHY IT WAS NOT FIXED, AND THE DECISION IT NEEDS. The binding is consistent with a
+RESOLVED decision and inconsistent with the operator documentation:
+
+- `docs/phase-2-foundation/decisions-log.md:44` records "CR-2 RESOLVED by Avi: production
+  agent-auth = DB-backed hashed tokens, `agent_tokens` table (store sha256 hash, never
+  plaintext; PER-AGENT; revocable)".
+- `docs/emitter-setup.md:5` then documents one token PER MACHINE.
+
+So per-agent tokens were settled, and the emitter was documented per-machine afterwards.
+#244 implemented the CR-2 reading and broke the documented deployment. Two coherent
+resolutions, and choosing between them changes what the security boundary means, which is
+why it was escalated rather than decided:
+
+1. Treat the credential as a machine credential: relax the binding so a token may speak
+   for agents in its org, and close the escalation another way, for example only for
+   agents that token itself registered. Keeps the documented deployment and reinterprets
+   CR-2's "per-agent".
+2. Make the deployment per-agent: mint a token per session or pane so the binding holds as
+   written. Consistent with CR-2 as recorded, but sessions and panes are created
+   dynamically, so it needs runtime token minting that does not exist today.
+
+FINDING 2 IS REAL BUT RESOLVES DIFFERENTLY, and both of my earlier readings of it were
+wrong. It is not "the dashboard has no privacy filtering" and it is not "a pre-existing
+gap with nothing to do". `lib/dashboard/queries.ts` ALREADY mirrors RLS privacy in its own
+SQL, deliberately, with comments at lines 125, 132 and 164 citing the BYPASSRLS bypass as
+the reason it must. It carries twelve `is_private` references and filters `and not
+is_private` in several queries. What it mirrors is only a task's OWN flag, not 0024's
+CONTAINMENT, so a non-private task inside a private project is still returned to the
+Command Centre. The mirror exists and is now incomplete, which makes the fix a narrow,
+well-precedented one: extend the existing SQL mirror to consult the parent project, in the
+same places that already consult the task's own flag. The audit had already flagged this
+exact drift class at `lib/dashboard/queries.ts:122-128`, where a port "kept the org filter
+and silently lost the privacy clause".
+
+STILL NOT DONE, carried forward unchanged from the fourth stretch:
+
+- THREE DECISIONS UNIMPLEMENTED: AC-12/DL-4, NFR-2, NFR-5. Designs are in the "Third
+  stretch" table. All three are small; NFR-2 is the one that is easy and expensive to get
+  wrong, because its Zod schema must reuse the route's existing regexes and never
+  `z.string().uuid()`.
+- NO FULL FIVE-GATE RUN AGAINST POST-MERGE `main` (`3eeaa5c` at the time, now moved).
+- THE 23-ROW PRD VERDICT TABLE IS STALE against the merged tree, and finding 1 means AC-7
+  and NFR-8 in particular would now verdict differently.
+- THE REALTIME LEG OF AC-6 IS UNVERIFIED and needs a live project.
+
+### Sixth stretch: all four decisions implemented, and two guards that caught their own author
+
+THE OPEN-DECISION LIST IS NOW EMPTY. All four remaining decisions are implemented in draft
+PR #246 (stacked on #245: its base is `claude/byahad-conformance-reason-guard`, so merge
+#245 first), each dry-run before the next as the goal requires:
+
+| Decision | Answer | Dry-run |
+| --- | --- | --- |
+| AC-3 | catalog test | 4/4 tests, 5/5 mutations killed |
+| NFR-5 | ratify the global aggregate | 41/41 across every suite reading requirements.md |
+| AC-12 / DL-4 | AC-12 met, DL-4 superseded | 51/51 across the three realtime suites |
+| NFR-2 | add Zod at that boundary | 34/34 including 11 malformed cases, 5/5 mutations killed |
+
+THE ONE DETAIL NOT TO UNDO IN NFR-2. The Zod schema in
+`app/api/notifications/act/route.ts` REUSES the route's existing `UUID_RE`,
+`BASE64URL_RE` and digits regexes and deliberately does NOT use `z.string().uuid()`. The
+GET page reflects all four validated values into HTML attributes, and the reason that is
+safe is that those exact charsets contain no quote, angle bracket or space. Zod's own
+`uuid()` constrains version and variant nibbles that `UUID_RE` does not, so substituting
+it changes what is accepted at a sink whose safety depends on the charset. The eleven
+malformed-link cases already in `tests/api/notifications-act.test.ts`, two of them XSS
+breakout attempts, are the equivalence proof.
+
+AC-3's catalog test has one rule worth more than it looks: it asserts exactly ONE live
+migration defines the `events.type` CHECK. Without that, a later migration could drop and
+recreate the constraint and leave the test comparing dead DDL while still passing green.
+Comment lines are stripped before the scan, because 0009 and 0012 each carry a
+commented-out example of that constraint shape for `notifications`.
+
+TWO GUARDS CAUGHT THEIR OWN AUTHOR IN THIS STRETCH, which is the most useful thing to
+carry forward:
+
+1. #245's guard PASSED when it should have failed. When the four decisions were answered,
+   `prd-conformance.e2e.test.ts` still listed all four as open `decision:` entries and the
+   boundary test stayed green, because the rules bind the LITERAL to the MAP and nothing
+   in the tree says an owner has decided something. The rules catch a reason drifting from
+   the code it cites; they cannot notice the world moved. That limitation is now written
+   into the suite header rather than patched away: reading a `decision:` entry tells you
+   what the file was last told, not what is still open.
+2. #247's CI went RED, and correctly so, because its tests fail by design to prove the
+   credential-binding regression. A permanently red PR cannot merge, and "red on purpose"
+   is indistinguishable from "red because broken" in a checks list. FIXED AND PUSHED as
+   `a2f58e3`: the three break-proving cases are now Vitest `it.fails`, so CI is green, the
+   defect stays an executable claim rather than a comment, and the file FLIPS TO RED the
+   moment someone fixes the binding, forcing whoever fixes it to convert these to ordinary
+   assertions. A known-defect test that silently keeps passing after the defect is gone
+   would be precisely the vacuity this whole pass has been removing. The three controls
+   stay ordinary assertions, since they must pass before and after any fix.
+   THAT FLIP IS VERIFIED, AND THE FIRST ATTEMPT TO VERIFY IT FAILED, which is the useful
+   part. Relaxing only the `source` equality clause does NOT turn the file red, because the
+   `subject` clause still rejects the same envelope: the emitter is still broken and a
+   half-fix must not read as done. Relaxing BOTH clauses to org scope, which is what
+   admitting the documented emitter requires, does turn it red (3 failed). So the signal
+   fires when the documented envelope is ADMITTED, not when either clause is merely
+   touched. Had the mutation not been run, the docblock would have claimed a property the
+   test did not have.
+
+THE FULL FIVE-GATE RUN AGAINST POST-MERGE `main` PLUS ALL FOUR DECISIONS PASSED, on
+`6eb86a0`, tree verified clean at both ends: audit at both `--audit-level=high` and bare,
+typecheck, lint, 118 files / 1310 tests, and `npx next build`. Coverage 95.91% statements,
+91.34% branches, 96.27% functions, 96.47% lines, all above the `vitest.config.ts` floors
+that NFR-5 was ratified to in the same PR. This is a RECORDED RESULT, not an expectation
+inherited from a neighbouring commit, and it closes the gap the standing goal kept naming.
+One figure worth knowing before someone investigates it: branches moved 91.41% to 91.34%
+against the pre-merge tree. That is the NFR-2 refactor replacing a four-way compound `if`
+with a Zod schema, which REMOVES branch points rather than adding uncovered ones: fewer
+total branches, same uncovered set.
+
+THE 23-ROW VERDICT RE-RUN WAS ATTEMPTED AND STARVED. It was launched as a workflow with
+one judge and one adversarial refuter per requirement, every agent writing its verdict to
+disk the moment it had one so partial results would survive an interruption (the lesson
+from two earlier workflows that returned nothing). After eight minutes it had 2 agents
+started and 0 results, because the full test suite was saturating the CPU alongside it, so
+it was stopped rather than left to degrade the gate. THE LESSON FOR NEXT TIME: do not run
+the verdict pass and a full suite at once. Give the verdict pass a window with no suite
+running. Its script is preserved and resumable at
+`.claude/projects/-home-user-skills/<session>/workflows/scripts/prd-verdict-rerun-2026-10-22-wf_47b76d58-d31.js`,
+and its brief already carries both known defects so the agents do not rediscover them.
+
+STILL OPEN after this stretch:
+
+- THE CREDENTIAL-BINDING FIX, which needs Avi's choice between the two options written out
+  in "Fifth stretch". The regression is in `main` now.
+- The Command Centre containment mirror: extend `lib/dashboard/queries.ts` to consult the
+  parent project where it already consults a task's own `is_private`.
+- The 23-row verdict table, still stale. Note that finding 1 means AC-7 and NFR-8 would
+  verdict differently, so the table cannot be hand-edited.
+- The Realtime leg of AC-6, needing a live project.
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 

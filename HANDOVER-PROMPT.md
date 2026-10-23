@@ -69,6 +69,51 @@
 > `claude/byahad-ac6-privacy-and-token-binding`, which a push recreated after GitHub had
 > deleted it on merge; `git push --delete` is blocked in that environment.
 
+> **Update 2026-10-22, final state of that session.** One of the four decisions is
+> implemented: AC-3, in draft PR #246, which is STACKED on #245 (base is
+> `claude/byahad-conformance-reason-guard`, not `main`), so merge #245 first. Three remain
+> unimplemented (AC-12/DL-4, NFR-2, NFR-5) with designs in `HANDOVER.md`. The two
+> review-bot findings are STILL UNVERIFIED after a second attempt that returned no
+> verdicts, so they remain in `main` unexamined, and `HANDOVER.md` -> "Fourth stretch"
+> names the one question that decides each. Three gaps are open and none is a formality:
+> no full five-gate run exists against post-merge `main` (`3eeaa5c`); the 23-row PRD
+> verdict table is stale against the merged tree and only re-running the judge-and-refute
+> pass updates it honestly; and the Realtime leg of AC-6 cannot be observed from PGlite
+> and needs a live project, which was not attempted because it means writing data to a
+> live project.
+
+> **Update 2026-10-22, read this before anything else in byahad.** BOTH review-bot
+> findings are now VERIFIED, so do not re-verify them. One is a SHIPPED REGRESSION that
+> breaks the primary ingestion path in `main`: #244's credential binding rejects every
+> event from the documented emitter and the orca sidecar, always, because a token is
+> minted once per machine while every event's agent id is a per-session or per-pane uuid.
+> Nothing alerts either, since the sidecar is the sole writer of the two statuses that
+> alert. Draft PR #247 proves it with a test that fails on `main` and three controls that
+> pass, and deliberately does not fix it: the binding matches resolved decision CR-2
+> ("per-agent" tokens) and contradicts `docs/emitter-setup.md` ("once per machine"), so
+> the fix changes what the security boundary means and is Avi's call. The two coherent
+> options are written out in `HANDOVER.md` -> "Fifth stretch". The second finding is real
+> but narrow: `lib/dashboard/queries.ts` already mirrors RLS privacy in SQL on purpose and
+> mirrors only a task's own flag, not 0024's containment, so the fix is to extend the
+> existing mirror to consult the parent project.
+
+> **Update 2026-10-22, final. ALL FOUR remaining owner decisions are IMPLEMENTED** in
+> draft PR #246, stacked on #245, each dry-run before the next (AC-3 catalog test, NFR-5
+> ratified to the enforced aggregate, AC-12 met with DL-4 superseded, NFR-2 Zod at the
+> last hand-rolled boundary). The open-decision list is empty. Two things from
+> `HANDOVER.md` -> "Sixth stretch" matter most: the NFR-2 schema must keep reusing the
+> route's own regexes rather than `z.string().uuid()`, because an HTML-attribute sink
+> depends on those exact charsets; and both guards built this session caught their own
+> author, once by passing when it should have failed (the rules bind the literal to the
+> map, not the map to reality) and once by turning #247's CI red on purpose, whose fix is
+> decided (`it.fails`) and only needs pushing. Four things remain: the credential-binding
+> fix awaiting Avi's choice, the 23-row verdict re-run (which was starved by running
+> alongside a full suite, so give it a quiet window; its script is preserved and
+> resumable), the Command Centre containment mirror, and the Realtime leg of AC-6. The
+> five-gate run on `6eb86a0` PASSED and is recorded: 118 files / 1310 tests, clean build,
+> coverage above every floor. #247's red CI is fixed and pushed (`a2f58e3`, `it.fails`),
+> with the flip to red on a real fix verified by mutation.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
