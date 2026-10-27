@@ -166,7 +166,13 @@
 > FAILS to HOLDS, so the tally is 1 FAILS, 16 PARTIAL, 6 HOLDS, recorded in
 > `docs/phase-2-foundation/verdicts-2026-10-27.md` beside the 10-22 table, which keeps the
 > other eighteen rows. Read `HANDOVER.md` -> "Eighth stretch" for the detail. Four things are
-> worth knowing before you touch either repository, and the gate is settled: ALL FIVE ARE
+> worth knowing before you touch either repository, and ONE OF THEM IS URGENT: THE LIVE
+> SUPABASE PROJECT IS NINE MIGRATIONS BEHIND THE REPO (applied 0001 to 0015, repo holds
+> 24), so every security hardening from 0021 to 0024 is absent and a private task title is
+> currently pushed to every org member over Realtime. Read `HANDOVER.md` -> "Eighth
+> stretch" first; applying the migrations is an owner decision, and a green CI run is NOT
+> evidence a database-level fix is in effect, because every gate builds its schema from
+> the migration files. The repo-side gate is settled: ALL FIVE ARE
 > GREEN on `16b65a0`, all twenty-two commits, 1399 passed plus 5 expected-fail, coverage
 > 97.15 / 92.46 / 97.22 / 97.76 over an 84-file denominator that GREW from 82:
 >
