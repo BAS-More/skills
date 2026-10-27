@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD verdict table was RE-JUDGED on 2026-10-27 and AC-6 moved FAILS to HOLDS, so the tally is now 1 FAILS, 16 PARTIAL, 6 HOLDS, committed as `docs/phase-2-foundation/verdicts-2026-10-27.md`. Twenty fixes A to X are done (H blocked), each dry-run before the next and each mutation-proven; A, B and C are in byahad `main`, and D through X are in draft PR #249. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS IN FLIGHT as this is written; the run on `0946f29`, sixteen of the twenty-two commits, was ALL FIVE GREEN. What is left there is owner decisions, not defects: see "Eighth stretch".
+**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD verdict table was RE-JUDGED on 2026-10-27 and AC-6 moved FAILS to HOLDS, so the tally is now 1 FAILS, 16 PARTIAL, 6 HOLDS, committed as `docs/phase-2-foundation/verdicts-2026-10-27.md`. Twenty fixes A to X are done (H blocked), each dry-run before the next and each mutation-proven; A, B and C are in byahad `main`, and D through X are in draft PR #249. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE AND ALL FIVE ARE GREEN on `16b65a0`, all twenty-two commits. What is left there is owner decisions, not defects: see "Eighth stretch".
 **Updated:** 2026-10-27, later (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -1329,12 +1329,21 @@ in the seventh stretch. The denominator also GREW, from 82 files to 84, because 
 brought two sheltered files back into the gate, so the rise is not an artefact of measuring
 less.
 
-A SECOND RUN OVER ALL TWENTY-TWO COMMITS IS IN FLIGHT as this is written, and its result is
-NOT recorded here. Fixes T, U, V, W and X are each unit-verified, mutation-proven,
-typechecked and linted, but they are not yet covered by a full-suite run, and the honest
-state of this handover is that the last six commits have per-suite evidence rather than
-whole-system evidence. If that run is not green, the next commit to this file says so and
-names what failed. Do not read the green above as covering the whole branch.
+THE SECOND RUN, OVER ALL TWENTY-TWO COMMITS, IS ALSO ALL FIVE GREEN, on `16b65a0`: audit 0,
+typecheck 0, lint 0, suite 0 in 414s, `next build` 0, and the post-run freeze check confirms
+the tree did not move mid-run. 128 test files, 1399 passed plus 5 expected-fail (1404).
+Coverage 97.15 statements, 92.46 branches, 97.22 functions, 97.76 lines over the same 84-file
+denominator, read from `coverage-summary.json` rather than the terminal table, which omits
+files. The five test-count difference from the first run is exactly the cases fixes T, V and W
+added, which is the cheapest available check that the suite ran what was committed.
+
+One note on reading that result, because it caught me once in this session. The wrapper I ran
+the gate through exited 1 while the gate itself exited 0: its trailing `grep` for the coverage
+table found nothing, because the gate keeps per-gate logs in a `mktemp` directory and echoes
+only the vitest summary lines to stdout. The gate's own exit code, recorded separately, is the
+one to read. That is the third variant of the same pipeline-exit-code mistake this session,
+and the reason the runner writes its code to a file rather than relying on `$?` surviving a
+pipe.
 
 The gate runner is `scripts/local-gate.sh` in byahad. Exit 97 means INVALID, the tree moved
 mid-run, which is a re-run rather than evidence about the code; 98 means the tree was already

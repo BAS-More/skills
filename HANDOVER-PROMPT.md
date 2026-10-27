@@ -166,7 +166,9 @@
 > FAILS to HOLDS, so the tally is 1 FAILS, 16 PARTIAL, 6 HOLDS, recorded in
 > `docs/phase-2-foundation/verdicts-2026-10-27.md` beside the 10-22 table, which keeps the
 > other eighteen rows. Read `HANDOVER.md` -> "Eighth stretch" for the detail. Four things are
-> worth knowing before you touch either repository:
+> worth knowing before you touch either repository, and the gate is settled: ALL FIVE ARE
+> GREEN on `16b65a0`, all twenty-two commits, 1399 passed plus 5 expected-fail, coverage
+> 97.15 / 92.46 / 97.22 / 97.76 over an 84-file denominator that GREW from 82:
 >
 > - ALL FIVE REFUTERS HAD TO CORRECT THEIR JUDGE'S DESCRIPTION OF THE TREE, and in two cases
 >   that correction WAS the verdict. The remediation and the judging ran at the same time, so
