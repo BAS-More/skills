@@ -1,8 +1,8 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. Both of that session's byahad PRs (#243, #244) are now merged; its remaining byahad work is draft PRs #245, #246 (stacked on #245) and #247, recorded under "Third" to "Sixth stretch". ALL FOUR remaining owner decisions are now IMPLEMENTED in #246. BOTH review-bot findings are VERIFIED; one is a shipped regression that breaks the primary ingestion path in byahad `main`, and #247 proves it.
-**Updated:** 2026-10-22 (Australia/Melbourne)
+**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. EVERY PR that session opened is now merged (byahad #243, #244, #245, #246, #247, #248 and skills #32), the last five of them in one pass; byahad `main` is `f921246`. The 23-row PRD verdict table is SETTLED and committed (2 FAILS, 16 PARTIAL, 5 HOLDS). Six fixes A to F are done, each dry-run before the next and each mutation-proven; A, B and C are in `main`, and D, E and F are in draft PR #249 with a fourth commit clearing an advisory-driven audit red. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE AND ALL FIVE ARE GREEN on `b6db000`. What is left there is owner decisions, not defects: see "Seventh stretch".
+**Updated:** 2026-10-27 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -1098,6 +1098,124 @@ STILL OPEN after this stretch:
 - The 23-row verdict table, still stale. Note that finding 1 means AC-7 and NFR-8 would
   verdict differently, so the table cannot be hand-edited.
 - The Realtime leg of AC-6, needing a live project.
+
+### Seventh stretch: all five PRs merged, the verdict table settled, and three more fixes in #249
+
+Avi merged ALL FIVE open PRs (byahad #245, #246, #247, #248 and skills #32). byahad `main`
+is `f921246`.
+
+FIRST, A CORRECTION TO THE SIXTH STRETCH ABOVE. Its diagnosis of why the verdict pass
+starved is WRONG, and its "lesson for next time" is therefore the wrong lesson. The cause
+was not CPU contention from the test suite. The cause is that this container reports
+`nproc: 4`, and a workflow's concurrency cap is `min(16, nproc - 2)`, which is 2. Two agent
+slots, 23 requirements, each needing a judge and a refuter. The agents are I/O-bound on
+model calls, not CPU-bound: load average sat at 0.15 while they ran. The real lesson is
+that THE CAP IS PER WORKFLOW, so sharding the pass into several top-level workflows
+multiplies the slots, and that is what finally made it complete. Running a suite alongside
+it was never the problem. Worth noting how this one went wrong: the per-workflow-cap fact
+had already been recorded earlier in the same session, and the sixth stretch was written
+mis-diagnosing against that own note.
+
+THE 23-ROW VERDICT TABLE IS SETTLED against the remediated tree: 2 FAILS, 16 PARTIAL, 5
+HOLDS, against a prior 0 FAILS, 14 PARTIAL, 9 HOLDS. It is committed as
+`docs/phase-2-foundation/verdicts-2026-10-22.md` (merged in #248). Refutation moved three
+verdicts, and in BOTH directions, which is the point of running a refuter at all:
+
+- AC-3 was reported as "pinning a shadow" and that report was RETRACTED. The refuter proved
+  the drift scenario does not compile, because `NOTIFY_ON: ReadonlySet<EventType>` cannot be
+  called with an unnarrowed `event.type`. Verified with an isolated `tsc` probe (TS2345).
+  AC-3 HOLDS.
+- The cron dead-man's switch was reported twice as silently never firing. Wrong direction
+  in both reports: it is fail-open, so a bad URL produces a loud false DOWN alert rather
+  than silence.
+- Two Vercel findings resolved differently from the earlier readings: finding 1 is confirmed
+  and WORSE than first stated (the emitter breaks always, by its own documentation), and
+  finding 2 resolved differently from both earlier readings (the mirror exists deliberately
+  but is incomplete).
+
+SIX FIXES, A to F, each dry-run before the next was started and each mutation-proven. A, B
+and C are in `main` and were verified there BY CONTENT rather than by trusting the merge
+notices, which matters because D turned out to be absent: it had never been pushed.
+
+| Fix | What | Where |
+| --- | --- | --- |
+| A | Sentry edge transport send timeout, with the false "could not be established" comment replaced by the verified resolution chain | merged |
+| B | Eight env fields tightened off the unfalsifiable `min(1).optional()` shape, plus a test forbidding that idiom anywhere in both env modules | merged |
+| C | `updateTaskFields`, one UPDATE with `coalesce`, replacing the silent-no-op branch | merged |
+| D | `agent.registered` refused across tenants instead of rebinding the agent | #249 |
+| E | Task and project privacy applied to all five dashboard reads, not just `getTasks` | #249 |
+| F | `useLiveChannel` un-excluded from the coverage gate, its DOM wiring pinned | #249 |
+
+Draft PR #249 carries D, E and F plus a fourth commit for the dependency audit, described
+below. ITS ONE API-VISIBLE CHANGE NEEDS AVI'S VETO OR ACCEPTANCE: fix D turns a cross-org
+`agent.registered` from 200 into 422. That is the intent of the fix, but it is a response
+code change on a public ingest route, so it is flagged in the commit message and in the PR
+body rather than buried.
+
+THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE, which is what the standing goal kept
+asking for, and it took two passes because the first found a real red:
+
+- On `cf7a449` (D, E, F): four of five green, with `npm audit --audit-level=high` RED.
+- On `b6db000` (plus the dependency fix): ALL FIVE GREEN. 121 files, 1341 passed and 3
+  expected-fail, 1344 total. Coverage 95.97 statements, 91.48 branches, 96.34 functions,
+  96.52 lines, every figure above the `vitest.config.ts` floors and every one HIGHER than
+  the run recorded in the sixth stretch (95.91, 91.34, 96.27, 96.47). Un-excluding
+  `useLiveChannel` raised coverage rather than denting it.
+
+THE AUDIT RED IS WORTH UNDERSTANDING because it will happen again to whoever reads this.
+`npm audit` reads `package-lock.json` against the LIVE advisory database, so an unchanged
+lockfile flips red the moment an advisory is published. The branch's lockfile was
+byte-identical to `main`'s, three high advisories against `undici` landed between
+2026-10-22 and 2026-10-27, and `main` fails that gate identically today. The fix is an
+`overrides` entry for `undici` at `^7.30.1` and a bump of the stale `fast-uri` override to
+`^3.1.9`; both are patch bumps inside the major their parent already accepts, and both
+packages are transitive, which is why dependabot does not reach them. One trap: the first
+`npm install` also stripped 22 `libc` fields from optional platform packages, because the
+local npm (10.9.4 on node 22) predates the npm that wrote the lockfile (node 24). That
+churn was reverted and the two entries edited surgically, so the diff is exactly six lines
+per side.
+
+THE LESSON THIS STRETCH KEPT RE-LEARNING, now applied to my own work five separate times:
+A GUARD'S STRENGTH CANNOT BE ASSESSED BY READING IT. Only by mutating against it, and only
+once the harness itself has been shown capable of reporting a PASS. Fix E's code was
+essentially right from its first draft, and it still took four rounds, every one of which
+found a defect in the apparatus rather than in the query:
+
+1. The mock dispatched on loose substring matching, so the new privacy subqueries misrouted
+   the activity read to the tasks branch.
+2. The mutation harness grepped for a test count that never matched even on unmutated code,
+   so every mutation printed KILLED unconditionally. Those results were retracted. The
+   harness now asserts it can report a PASS before any mutation is applied.
+3. One mutation silently never applied, because shell `$` escaping mangled its anchor.
+4. The uuid-shape guard line was MISSING from the written file and the test written to
+   cover it PASSED ANYWAY, because its fixture seeded no private task, so the `::uuid` cast
+   was never reached. Probing directly produced `invalid input syntax for type uuid:
+   "not-a-uuid"`, which in production is the whole activity feed down rather than one
+   hidden row.
+
+Fix D had the same shape: three of six mutations initially survived, all because of the
+tests rather than the code. One asserted against the column default, so "untouched" was
+unobservable. One used an existing task, where the guard present and the guard absent are
+identical. Nothing exercised the notification tail. Fix F's first version was vacuous
+because `notify*` is a no-op while subscribed, so nothing was observable until the fake
+transport could force backoff, and its listener-leak mutation then survived because
+`notify*` is a no-op when idle too, which needed a registration-balance test instead.
+
+STILL OPEN after this stretch, and all but the last are owner decisions rather than
+defects:
+
+- THE CREDENTIAL-BINDING SHAPE. Three sources, three answers: the PRD requires no binding,
+  CR-2 says per-agent, `docs/emitter-setup.md` says per-machine. #247 pins the
+  contradiction with `it.fails` cases so it cannot drift silently, and those are the three
+  expected-fails in the suite count above.
+- AC-5 AND AC-6. BYPASSRLS is ratified architecture, pinned by
+  `restore-drill.test.ts:293-307`, while `design.md:18` separately promises that "RLS still
+  guards every human read path". Both cannot be fully true at once.
+- THE REALTIME LEG OF AC-6, which needs live-project writes.
+- FIX D's 200 to 422 change, needing a veto or an acceptance.
+- One chore still needs a human: delete the stray remote branch
+  `claude/byahad-ac6-privacy-and-token-binding`. A push recreated it after GitHub had
+  deleted it on merge, and the delete is blocked in this environment.
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 
