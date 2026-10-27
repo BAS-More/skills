@@ -1,8 +1,8 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it (`review-and-continue`, 2026-10-15 to 2026-10-20) and "Session 2026-10-21/22" did not advance it; the latter worked in `BAS-More/byahad` and changed nothing here but this handover pair. EVERY PR that session opened is now merged (byahad #243, #244, #245, #246, #247, #248 and skills #32), the last five of them in one pass; byahad `main` is `f921246`. The 23-row PRD verdict table is SETTLED and committed (2 FAILS, 16 PARTIAL, 5 HOLDS). Six fixes A to F are done, each dry-run before the next and each mutation-proven; A, B and C are in `main`, and D, E and F are in draft PR #249 with a fourth commit clearing an advisory-driven audit red. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE AND ALL FIVE ARE GREEN on `b6db000`. What is left there is owner decisions, not defects: see "Seventh stretch".
-**Updated:** 2026-10-27 (Australia/Melbourne)
+**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD verdict table was RE-JUDGED on 2026-10-27 and AC-6 moved FAILS to HOLDS, so the tally is now 1 FAILS, 16 PARTIAL, 6 HOLDS, committed as `docs/phase-2-foundation/verdicts-2026-10-27.md`. Twenty fixes A to X are done (H blocked), each dry-run before the next and each mutation-proven; A, B and C are in byahad `main`, and D through X are in draft PR #249. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE AND ALL FIVE ARE GREEN on `16b65a0`, all twenty-two commits. What is left there is owner decisions, not defects: see "Eighth stretch".
+**Updated:** 2026-10-27, later (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -1216,6 +1216,193 @@ defects:
 - One chore still needs a human: delete the stray remote branch
   `claude/byahad-ac6-privacy-and-token-binding`. A push recreated it after GitHub had
   deleted it on merge, and the delete is blocked in this environment.
+
+### Eighth stretch: the verdict table re-judged, AC-6 moved FAILS to HOLDS, and seventeen more fixes in #249
+
+The seventh stretch left five things open and called four of them owner decisions. This
+stretch attacked the fifth, re-judged the rows that had been graded against a tree that no
+longer existed, and found that one of the two FAILS was no longer true.
+
+THE RE-JUDGEMENT. Five requirements had their evidence touched by this branch, so each was
+re-judged the way the 2026-10-22 table was built: one judge, then one adversarial refuter
+attacking the verdict on three fronts. Results are committed as
+`docs/phase-2-foundation/verdicts-2026-10-27.md`.
+
+| Requirement | Was | Now | What moved it |
+| --- | --- | --- | --- |
+| AC-5 | FAILS | FAILS | stands, with the judge's read-path reasoning corrected |
+| AC-6 | FAILS | HOLDS | three commits the judge never saw closed its three residuals |
+| AC-7 | PARTIAL | PARTIAL | grade-bearing gap closed, two proof weaknesses left |
+| AC-13 | PARTIAL | PARTIAL | the stop() breach reproduced and measured worse |
+| NFR-5 | PARTIAL | PARTIAL | label stands, every stated reason replaced |
+
+So the tally is 1 FAILS, 16 PARTIAL, 6 HOLDS, against 2 / 16 / 5 a week ago.
+
+THE FINDING THAT MATTERS MORE THAN THE TALLY: FOUR OF THE FIVE REFUTERS HAD TO CORRECT THEIR
+JUDGE'S DESCRIPTION OF THE TREE, and in two cases that correction WAS the verdict. The
+remediation and the judging ran at the same time, so every judge measured a head that had
+moved by the time it reported, and a judge has no way to notice. AC-6's judge assessed four
+commits past `main` when there were eight; AC-7's grade rested entirely on a gap that a
+commit closed by name fourteen minutes after the judge measured. Next time: freeze the tree
+for the pass, or judge a tag rather than a branch. The verdicts here are sound only because
+every refuter re-ran the mutations instead of reading the reports, and that should not be
+load-bearing.
+
+TWICE, A REFUTER REJECTED A GUARD ITS OWN JUDGE DEMANDED, and both times it was right.
+
+- AC-6's judge named "no parity test between the TypeScript privacy mirror and
+  `private.subject_is_visible`" as the structural residual. A strict parity test WOULD FAIL
+  ON A CORRECT IMPLEMENTATION: the mirror is deliberately the no-viewer form of the policy,
+  so it hides unconditionally where the policy exempts the creator and admins. Agreement is
+  not the property wanted. And none of the six historical misses was drift in the fragment;
+  every one was a site not applying it at all, which a parity test cannot see.
+- AC-5's refuter demonstrated a cross-org UPDATE succeeding through
+  `app/api/notifications/act/route.ts`, and the obvious fix (bind `org_id` into the action
+  token, add `and org_id = $2` to the statement) WOULD BE VACUOUS BY CONSTRUCTION.
+  `notifications.id` is a uuid primary key, so the id already names one row in one org and
+  the token already binds the id under a secret the caller does not hold. The predicate would
+  match on every reachable input, read as a tenancy guard, pass review and guard nothing. It
+  was deliberately not written, and the reason is recorded in the verdict file so the next
+  reader does not "fix" it.
+
+TWENTY FIXES, D to X with H blocked, each dry-run before the next and each mutation-proven.
+D, E and F were in #249 at the end of the seventh stretch; G to X are new here.
+
+| Fix | What |
+| --- | --- |
+| G | cross-org INSERT arms got positive controls, so a missing grant can no longer pass for an RLS denial |
+| H | BLOCKED, see below |
+| I | an end-to-end dry-run of the deployment `docs/emitter-setup.md` documents |
+| J | `getKpis`' activity tile counted rows the feed hides |
+| K | a contained task's real title was emailed outside the org |
+| L | which dashboard reads must apply containment is now enumerated and enforced |
+| M | the console's only write gate had untested wiring, and two false reasons why |
+| N | `lib/data/viewer.ts` brought back inside the coverage gate |
+| O | `scripts/local-gate.sh`, a local gate runner that cannot drift from `ci.yml` |
+| P | the coverage thresholds were the enforcement and nothing asserted them |
+| Q | a barrel-file coverage exclusion was sheltering a real factory |
+| R | the PRD traceability guard could not fail, and now can |
+| S | that gate runner's freeze check was blind to untracked files |
+| T | `stop()` could leave two live subscriptions, closing AC-13's only PARTIAL-holding gap |
+| U | AC-7's INSERT deny arms passed under a missing grant, plus a dead citation |
+| V | the bulk-literal discount's premise check was one-directional, so a decoy restored the bypass |
+| W | the thresholds were pinned but the denominator was not, and an exclusion can only raise it |
+| X | the exemption claiming NFR-5 cannot be a test outlived the test that proves it |
+
+THREE OF THOSE ARE DEFECTS IN GUARDS WRITTEN EARLIER IN THE SAME SESSION, which is the single
+most useful thing in this stretch. V and X are defects in R; W is a gap in P. Each was found
+by an adversarial refuter running mutations against my work an hour after I had convinced
+myself it was sound, and each had passed its own mutation suite at the time. The lesson is not
+"write better guards". It is that a guard's strength cannot be assessed by its author, because
+the author tests the failure modes they thought of, and the ones they did not think of are
+exactly what is left.
+
+FIX I IS THE ONE THAT ANSWERED THE STANDING GOAL'S "full dry-run to make sure the whole
+system works as planned", and it found something no unit test could. It drives the documented
+deployment end to end: one token per machine (`emitter-setup.md:5`), a per-session uuid as
+`source.id` (`:34`), through the real `DbAgentTokenResolver`, the real `handleEventsPost` and
+a real Postgres. THE WHOLE CREDENTIALED END-TO-END TIER IS BLIND TO THE CREDENTIAL BREAK, by
+two independent mechanisms: of the six suites that drive `handleEventsPost`, only three pass
+a real credential, and all three mint the token for the very agent their events are about,
+which is the one configuration `emitter-setup.md` excludes. So every existing test agrees the
+path works and every real deployment is refused.
+
+FIX I ALSO WENT VACUOUS TWICE BEFORE IT WORKED, and both failures are worth knowing because
+neither is visible by reading the test. Its known-defect cases reused the control's
+already-registered agent id, so AC-10's idempotency made them fail regardless of the defect;
+and `documentedRegisterEnvelope` hardcoded one envelope `id`, which is the `events` primary
+key, so no later insert in the file could happen at all. Both were caught only by checking
+that the `it.fails` cases FLIP when the defect is removed. An `it.fails` that passes for the
+wrong reason is indistinguishable from one that works.
+
+FIX H IS BLOCKED AND THE BINDING IS UNTOUCHED ON DISK. Changing the credential-binding shape
+was refused by the auto-mode classifier as "Security Weaken". That is a defensible refusal on
+its face: the change relaxes a check. It needs Avi, and it needs the three-way contradiction
+resolved first (the PRD requires no binding, CR-2 says per-agent, `emitter-setup.md` says
+per-machine). Nothing was worked around.
+
+THE FULL FIVE-GATE RUN. The run on `0946f29`, which is sixteen of the twenty-two commits,
+was ALL FIVE GREEN: 128 test files, 1394 passed plus 5 expected-fail (1399), coverage 97.15
+statements, 92.46 branches, 97.22 functions, 97.75 lines, every figure above its
+`vitest.config.ts` floor and every one higher than the 95.97 / 91.48 / 96.34 / 96.52 recorded
+in the seventh stretch. The denominator also GREW, from 82 files to 84, because fixes N and Q
+brought two sheltered files back into the gate, so the rise is not an artefact of measuring
+less.
+
+THE SECOND RUN, OVER ALL TWENTY-TWO COMMITS, IS ALSO ALL FIVE GREEN, on `16b65a0`: audit 0,
+typecheck 0, lint 0, suite 0 in 414s, `next build` 0, and the post-run freeze check confirms
+the tree did not move mid-run. 128 test files, 1399 passed plus 5 expected-fail (1404).
+Coverage 97.15 statements, 92.46 branches, 97.22 functions, 97.76 lines over the same 84-file
+denominator, read from `coverage-summary.json` rather than the terminal table, which omits
+files. The five test-count difference from the first run is exactly the cases fixes T, V and W
+added, which is the cheapest available check that the suite ran what was committed.
+
+One note on reading that result, because it caught me once in this session. The wrapper I ran
+the gate through exited 1 while the gate itself exited 0: its trailing `grep` for the coverage
+table found nothing, because the gate keeps per-gate logs in a `mktemp` directory and echoes
+only the vitest summary lines to stdout. The gate's own exit code, recorded separately, is the
+one to read. That is the third variant of the same pipeline-exit-code mistake this session,
+and the reason the runner writes its code to a file rather than relying on `$?` surviving a
+pipe.
+
+The gate runner is `scripts/local-gate.sh` in byahad. Exit 97 means INVALID, the tree moved
+mid-run, which is a re-run rather than evidence about the code; 98 means the tree was already
+dirty. Both distinctions exist because this session hit each of them.
+
+WHAT KEPT GOING WRONG, now at six instances in two stretches: A GUARD IS WEAKER THAN THE
+INCIDENT THAT PROMPTED IT, and reading it will not tell you.
+
+- Fix S exists because fix O's freeze check passed `--untracked-files=no`, and the incident
+  it was written for was a temporary migration, which is a NEW FILE. The check written to
+  catch that event could not have seen that event. Caught by Vercel's reviewer on the PR, not
+  by me.
+- `tests/helpers/pglite-harness.ts:55` builds its schema with `readdirSync` over
+  `supabase/migrations/`, so ANY file there is applied, tracked or not, and vitest's include
+  glob collects any new test file. Those two mechanisms are why untracked files are
+  load-bearing here, and both were in the repository the whole time.
+- Fix R's predecessor cited every requirement id from one bulk literal, so the traceability
+  guard could not fail. Fix Q's exclusion list carved out `lib/**/index.ts` as "barrels",
+  which sheltered a file that was not one.
+- A gate script that invents its own commands produces NUMBERS, which is worse than having
+  no gate script: an early version ran `npm run test:coverage`, which does not exist in
+  `package.json`, printed "FAIL lines: 0" while nothing had run, and was briefly believed.
+
+AND THE REPORTING MISTAKES, recorded because they are the same class. Three times I piped a
+gate script through `tee` or `tail` and read the pipeline's exit code instead of the script's,
+so a failing gate reported success. Twice I claimed "tsc 0" from a run polluted by a
+concurrent agent's mutation of an unrelated file. Once I wrote "SIX suites drive
+`handleEventsPost` with a real credential" when three do. Each was corrected in place and the
+commit messages now state exactly what was measured rather than what was expected.
+
+A REFINEMENT TO THE SEVENTH STRETCH'S CONCURRENCY NOTE, which is right about the workflow and
+wrong about the suites. That note says the agents are I/O-bound on model calls, with load
+average 0.15 while they ran, and concludes "running a suite alongside it was never the
+problem". The first half still holds. But a REFUTER is not an agent waiting on a model: it
+runs mutations, and each mutation runs the suite. With three full vitest-plus-coverage runs in
+flight at once on `nproc: 4`, load average measured 15.99 and every one of them slowed to a
+crawl, including the five-gate run this stretch needed. So: shard the workflow to get the
+slots, and then expect the SUITES to serialise anyway. Plan one coverage run at a time, not
+three.
+
+STILL OPEN, and all but the last two are owner decisions rather than defects:
+
+- THE CREDENTIAL-BINDING SHAPE, as above. Blocked on both the contradiction and the
+  classifier.
+- AC-5's BYPASSRLS ARCHITECTURE. Either the dashboard and ingest roles stop being BYPASSRLS
+  and the human paths run under policies, or `design.md:18`'s promise that "RLS still guards
+  every human read path" is retracted. `restore-drill.test.ts:293-307` pins
+  `rolbypassrls = true` as mirroring production, so both cannot be true. Production role DDL.
+- THE REALTIME LEG OF AC-6, which needs live-project writes.
+- FIX D's 200 to 422 change on a public ingest route, needing a veto or an acceptance.
+- `lib/notifications/deliver-queries.ts` is still coverage-excluded at a measured 26%. Its
+  privacy predicate is now fixed and tested, but un-excluding it needs tests for five more
+  exports or the aggregate drops.
+- AC-13's remaining gap (1): `reconnect-controller.ts:148` returns early whenever state is
+  "subscribed", so a silently dead socket is recovered only when the SDK reports it. The
+  refuter argued, convincingly, that resubscribing on every focus would manufacture the
+  duplicates the same AC forbids, so this is a named narrowing rather than a defect.
+- One chore still needs a human: delete the stray remote branch
+  `claude/byahad-ac6-privacy-and-token-binding`.
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 

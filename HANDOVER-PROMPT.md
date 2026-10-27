@@ -161,6 +161,33 @@
 > chore still needs a human: delete the stray remote branch
 > `claude/byahad-ac6-privacy-and-token-binding`.
 
+> **Update 2026-10-27, later. Nothing below moved; the work was in byahad again. THE VERDICT
+> TABLE IS NO LONGER WHAT THE BLOCK ABOVE SAYS:** five rows were re-judged and AC-6 moved
+> FAILS to HOLDS, so the tally is 1 FAILS, 16 PARTIAL, 6 HOLDS, recorded in
+> `docs/phase-2-foundation/verdicts-2026-10-27.md` beside the 10-22 table, which keeps the
+> other eighteen rows. Read `HANDOVER.md` -> "Eighth stretch" for the detail. Four things are
+> worth knowing before you touch either repository, and the gate is settled: ALL FIVE ARE
+> GREEN on `16b65a0`, all twenty-two commits, 1399 passed plus 5 expected-fail, coverage
+> 97.15 / 92.46 / 97.22 / 97.76 over an 84-file denominator that GREW from 82:
+>
+> - ALL FIVE REFUTERS HAD TO CORRECT THEIR JUDGE'S DESCRIPTION OF THE TREE, and in two cases
+>   that correction WAS the verdict. The remediation and the judging ran at the same time, so
+>   each judge measured a head that had moved by the time it reported. If you run a judging
+>   pass, freeze the tree or judge a tag. Do not rely on the refuters catching it again.
+> - THREE OF THE SESSION'S OWN GUARDS WERE DEFECTIVE, found by refuters running mutations
+>   against work that had passed its own mutation suite an hour earlier. A guard's strength
+>   cannot be assessed by its author: you test the failure modes you thought of, and the ones
+>   you did not think of are exactly what is left. Budget for someone else attacking it.
+> - A REFINEMENT TO THE CONCURRENCY NOTE ABOVE, which is right about the workflow and wrong
+>   about the suites. Agents waiting on model calls are I/O-bound, as it says. A REFUTER is
+>   not: it runs mutations, and each mutation runs the suite. Three concurrent
+>   vitest-plus-coverage runs on `nproc: 4` measured load average 15.99 and slowed everything
+>   including the gate run. Shard the workflow for slots, then expect the suites to serialise.
+> - TWICE A REFUTER REJECTED A GUARD ITS OWN JUDGE DEMANDED, and both refusals are recorded
+>   with reasons in the verdict file, because writing either would have been worse than not.
+>   One would have failed on a correct implementation; the other could not fail at all. If you
+>   read the verdict file and think an obvious fix is missing, check that section first.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
