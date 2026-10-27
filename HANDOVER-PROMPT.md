@@ -114,6 +114,53 @@
 > coverage above every floor. #247's red CI is fixed and pushed (`a2f58e3`, `it.fails`),
 > with the flip to red on a real fix verified by mutation.
 
+> **Update 2026-10-27. Nothing below moved; the work was in byahad again. THE STANDING GOAL
+> IS NOW SATISFIED on the one item that was mine to close: the full five-gate run on the
+> final state is done and ALL FIVE ARE GREEN** on `b6db000` (121 files, 1341 passed plus 3
+> expected-fail, coverage 95.97 / 91.48 / 96.34 / 96.52, every figure above its floor and
+> every one higher than the previous recorded run). Read `HANDOVER.md` ->
+> "Seventh stretch" for the detail. Five things are worth knowing before you touch either
+> repository:
+>
+> - THE SIXTH STRETCH'S EXPLANATION OF THE STARVED VERDICT PASS IS WRONG, and so is the
+>   lesson it drew. It blamed CPU contention from the test suite. The real cause is
+>   `nproc: 4` giving a per-workflow concurrency cap of `min(16, nproc - 2)` = 2, with the
+>   agents I/O-bound on model calls (load average 0.15 while running). THE CAP IS PER
+>   WORKFLOW, so sharding into several top-level workflows multiplies the slots, and that
+>   is what made the pass complete. Do not avoid running a suite alongside a workflow on
+>   the strength of that older note.
+> - THE 23-ROW VERDICT TABLE IS SETTLED and committed at
+>   `docs/phase-2-foundation/verdicts-2026-10-22.md`: 2 FAILS, 16 PARTIAL, 5 HOLDS, from a
+>   prior 0 / 14 / 9. Do not re-run it. Refutation moved three verdicts in BOTH directions,
+>   including one of my own reports being retracted outright (AC-3 HOLDS; the drift
+>   scenario does not compile, proved with an isolated `tsc` probe).
+> - DRAFT PR #249 CARRIES FIXES D, E AND F plus a dependency commit, and it needs one
+>   owner decision that is not a defect: fix D turns a cross-org `agent.registered` from
+>   200 into 422. That is the intent, but it is a response code change on a public ingest
+>   route, so it wants an explicit veto or acceptance.
+> - `npm audit` WILL GO RED ON AN UNCHANGED LOCKFILE, because it reads `package-lock.json`
+>   against the live advisory database. That is what turned #249's first CI run red, on a
+>   lockfile byte-identical to `main`'s, and `main` fails that gate identically today. The
+>   fix pattern is an `overrides` entry, which is what that repository already uses for
+>   transitive security pins. One trap: a plain `npm install` there also strips `libc`
+>   fields from optional platform packages, because the local npm predates the npm that
+>   wrote the lockfile, so edit the entries surgically or regenerate under node 24.
+> - THE ONE RULE THIS SESSION KEPT RE-LEARNING, five times against my own work: a guard's
+>   strength cannot be assessed by READING it, only by mutating against it, and only once
+>   the harness has been shown capable of reporting a PASS. One harness grepped for a count
+>   that never matched even unmutated, so every mutation printed KILLED unconditionally;
+>   one mutation silently never applied because shell `$` escaping mangled its anchor; and
+>   one guard line was missing from the file while the test written to cover it passed
+>   anyway, because its fixture never reached the code path. Assume the instrument is
+>   broken until it has proved otherwise.
+>
+> What is open in byahad is owner decisions rather than work: the credential-binding shape
+> (three sources, three answers), AC-5 and AC-6 (BYPASSRLS is ratified architecture while
+> `design.md:18` promises RLS guards every human read path, and both cannot be fully true),
+> the Realtime leg of AC-6 (needs live-project writes), and fix D's response code. One
+> chore still needs a human: delete the stray remote branch
+> `claude/byahad-ac6-privacy-and-token-binding`.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
