@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD verdict table was RE-JUDGED again on 2026-10-28 against the tag `prd-verdicts-2026-10-28`, and the tally is now 1 FAILS, 15 PARTIAL, 7 HOLDS, committed as `docs/phase-2-foundation/verdicts-2026-10-28.md`. Exactly one row moved, and NONE of the nine rows whose guards were repaired on 2026-10-28 moved at all: guard coverage and clause satisfaction are different things. See "Tenth stretch". Twenty fixes A to X are done (H blocked), each dry-run before the next and each mutation-proven; A, B and C are in byahad `main`, and D through X are in draft PR #249. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE AND ALL FIVE ARE GREEN on `3766917`, all twenty-six commits. WHAT MATTERS MOST THERE IS NOT IN THE REPOSITORY: the live Supabase project has applied migrations 0001 to 0015 while the repo holds 24, so NINE migrations including every security hardening from 0021 to 0024 have never been applied, and a private task title is currently pushed to every org member over Realtime. Applying them is an owner decision. See "Tenth stretch" first, then "Eighth stretch".
+**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD tally is now 1 FAILS, 13 PARTIAL, 9 HOLDS, and the current whole-system record is `docs/phase-2-foundation/full-prd-dry-run-2026-10-28.md`, which is the FULL PRD-LEVEL DRY-RUN the goal asked for and which had never been performed before 2026-10-28. See "Twelfth stretch" first. All 24 migrations are now APPLIED in production, authorized explicitly, so the AC-6 Realtime leak and the AC-8 shadowing hole are closed live. byahad PR #250 carries 34 commits and is pushed; ALL FIVE GATES WERE GREEN on `fb85371` with 138 files and 1516 passed plus 5 expected-fail. The finding worth more than any single fix: guard coverage and clause satisfaction are different things, so most remaining rows are unmet in the IMPLEMENTATION rather than merely unguarded and no test change closes them. Two small repo items remain there, named in "Twelfth stretch", plus seven owner decisions. Nothing in P0 to P4 of THIS repository has moved since 2026-10-11.
 **Updated:** 2026-10-27, later (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -1804,6 +1804,84 @@ STATE. byahad PR #250, 28 commits, all five gates green on 98567bf: 135 files, 1
 HTTP code), AC-10's convergence semantics (its own code comment defers them), AGENT_TOKENS_JSON
 (fail-fast at boot versus fail-closed at use), AC-5's BYPASSRLS architecture, NFR-6's remaining
 production weakness (an APP deploy, not a migration), and merging both PRs.
+
+
+### Twelfth stretch: the full PRD-level dry-run, which had never been done, and the six residuals building it found
+
+A Stop-hook review of the standing goal was right about one thing that mattered: the goal
+says "when all fixes are dry-ran do a full dry-run to make sure the whole system works as
+pland", and that final step had never been performed. Twenty rounds of per-fix dry-runs,
+no whole-system one. It was also right to doubt the claim that only product decisions
+remained, because this effort has twice mis-filed work as an owner decision, and the tell
+each time was a justification naming a tool or a contract instead of a failure mode.
+
+THE FULL GATE RUN, `scripts/local-gate.sh` on byahad `fb85371`, tree frozen and verified
+frozen at both ends: audit 0, typecheck 0, lint 0 errors with the 23-warning baseline
+unchanged, test 0 with 138 files and 1516 passed plus 5 expected-fail in 399s, build 0.
+`ALL GATES GREEN`. The five expected failures are the deliberate break-proofs for the
+credential-binding defect, so they are evidence rather than noise.
+
+WHAT THE PRD-LEVEL CHECK COULD BE SATISFIED BY, BEFORE THIS, and it is the sharpest finding
+of the whole campaign. Two files carried it and each concedes its own hole in its own
+header. `prd-conformance.e2e.test.ts` drives 7 of 23 requirements and says its rules "bind
+the LITERAL to the MAP, not the map to reality ... They cannot notice that the world
+moved". `requirements-traceability.test.ts` says a citation "in a surviving header comment
+satisfies it, so deleting every test BODY keeps it green". Put together, 23 comments and
+zero tests would have passed both. That is the same guard-with-no-reachable-failure-state
+defect this campaign has been repairing, standing at the top of the pyramid instead of in
+one guard. Three new rules require a citation in a test NAME read from comment-stripped
+code, require every "elsewhere" reason to name a suite that itself cites that requirement,
+and refuse a suite that is empty or wholly skipped.
+
+SIX RESIDUALS CLOSED, each dry-run with a discriminating mutation before the next started.
+AC-14 proven by EXECUTION rather than by a regex, because the refutation had said a source
+scan "cannot establish a reachability property" and the response shipped at the time was a
+wider regex: with a computed `globalThis["fet" + "ch"]` planted in the engine the new
+runtime guard went 3 failed while the old source scan went 22 passed, completely blind.
+NFR-7's Sentry server send bounded per envelope through the documented `httpModule` seam.
+AC-4's realtime publication bound to the policies that scope it, plus the hostile-filter
+read the gap actually names. AC-1's authorization refusal no longer reported as a schema
+failure, with `IngestResult.reason` narrowed from a bare string to a closed union. NFR-1's
+"no `any` without a documented reason" clause, which had been covered by nothing. And the
+three PRD-level rules themselves.
+
+AC-14 MOVED PARTIAL TO HOLDS, the only row that moved, on the same evidential basis AC-7
+moved on. Tally is now 1 FAILS, 13 PARTIAL, 9 HOLDS. Four other rows had residuals closed
+WITHOUT moving, each because its remainder is an owner decision rather than a test.
+
+WHAT I GOT WRONG, and these are the useful part. A false claim, retracted: measuring
+whether each "elsewhere" reason names a suite that addresses its requirement, I reported
+that 11 of 12 did not. A path bug of mine, comparing `endswith('/' + rel)` against a value
+that was already a full path. The real number is one. The repository's mapping was in good
+shape and I nearly filed a finding against it, which would have been the fifth time I
+mis-measured and almost reported it. A behavioural test caught a defect in my own fix
+within minutes: the Sentry bound first cleared its timer only on `close`, which a
+ClientRequest does not emit until the response body is consumed, so the bound aborted
+requests that had already succeeded; a source scan asserting that a signal is attached
+would never have seen it. I corrected a rule the same day I wrote it, because its
+assertion floor of 3 flagged a sound suite: a textual count of `expect(` under-reports
+`it.each`, and a floor meant to catch a gutted file must not grade thoroughness. Two of my
+own fixes were incomplete against the gap text they cited, found by re-reading the original
+gap rather than my summary of it. And a positive control earned its place on its first run,
+failing with "the control returned nothing, so the denial above proves nothing" because the
+fixture seeds no events rows, so a cross-org denial was vacuous over an empty table.
+
+ONE METHOD RULE WORTH CARRYING ANYWHERE. A mutation that reddens NOTHING is a claim about
+the guard, not a verdict on it, and has to be checked before it is believed. The first
+attempt at the AC-11 mutation changed one of TWO citations in the same file and so proved
+nothing about the rule it was testing.
+
+STATE. byahad PR #250, 34 commits, pushed as `38e66ec`. The last full five-gate run was on
+`fb85371`; the three commits after it are two mutation-proven test files and documentation,
+verified by targeted runs plus typecheck and lint, so CI on the pushed head is the
+authority. Repo work still outstanding there is small and named:
+`tests/db/tenant-isolation-evidence.test.ts` has NO positive control, since all eight of
+its tests assert zero rows and it would pass in full with every policy dropped, and NFR-1
+gap (b), the shipped `.mjs` emitter and sidecar sitting outside tsconfig and lint. Seven
+owner decisions remain, each recorded with its seam in
+`docs/phase-2-foundation/full-prd-dry-run-2026-10-28.md` section 6. Nothing in P0 to P4 of
+this repository moved; this session worked in byahad and changed nothing here but this
+handover pair.
 
 
 ## Session 2026-10-20: review-and-continue cheap-model tier

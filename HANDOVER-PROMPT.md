@@ -294,6 +294,53 @@
 >   AGENT_TOKENS_JSON's boot behaviour, AC-5's architecture, NFR-6's production weakness (an
 >   APP deploy, not a migration), and merging byahad #250 and skills #36.
 
+> **Update 2026-10-28 (last): THE FULL PRD-LEVEL DRY-RUN IS DONE, and it had never been done
+> before.** Read `HANDOVER.md` -> "Twelfth stretch", then
+> `byahad:docs/phase-2-foundation/full-prd-dry-run-2026-10-28.md`. Nothing below moved; the
+> work was in byahad again.
+>
+> - **The goal's last step was missing, not disputed.** It asks for a whole-system dry-run
+>   once every fix is dry-run, and twenty rounds of per-fix dry-runs had never been followed
+>   by one. `scripts/local-gate.sh` on `fb85371`, tree frozen and verified frozen at both
+>   ends: audit 0, typecheck 0, lint 0 with the 23-warning baseline unchanged, test 0 with
+>   138 files and 1516 passed plus 5 expected-fail in 399s, build 0. ALL GATES GREEN.
+> - **THE SHARPEST FINDING OF THE WHOLE CAMPAIGN.** The repository's PRD-level check could
+>   have been satisfied by 23 comments and zero tests. `prd-conformance.e2e.test.ts` drives
+>   7 of 23 requirements and admits its rules "cannot notice that the world moved";
+>   `requirements-traceability.test.ts` admits a citation in a surviving header comment
+>   satisfies it, "so deleting every test BODY keeps it green". Three new rules now require a
+>   citation in a test NAME read from comment-stripped code, require every "elsewhere" reason
+>   to name a suite that itself cites that requirement, and refuse an empty or wholly skipped
+>   suite.
+> - **Six residuals closed, each mutation-proven.** AC-14 is the one worth knowing: the
+>   refutation had said a source scan "cannot establish a reachability property" and the
+>   answer shipped at the time was a WIDER REGEX. With a computed `globalThis["fet" + "ch"]`
+>   in the engine, the new runtime guard went 3 failed and the old source scan went 22
+>   passed, completely blind. Also NFR-7's Sentry per-send AbortController (the seam was
+>   `httpModule`, listed in the very sentence that had dismissed it), AC-4's realtime
+>   publication bound to its policies, AC-1's authorization refusal no longer reported as a
+>   schema failure, and NFR-1's no-`any` clause which nothing had covered.
+> - **AC-14 moved to HOLDS. Tally is 1 FAILS / 13 PARTIAL / 9 HOLDS.** Four other rows had
+>   residuals closed WITHOUT moving, because each remainder is an owner decision.
+> - **Two small repo items remain in byahad**, both named:
+>   `tests/db/tenant-isolation-evidence.test.ts` has NO positive control, so it would pass in
+>   full with every policy dropped, and NFR-1 gap (b), the shipped `.mjs` emitter and sidecar
+>   outside tsconfig and lint.
+> - **A retraction, recorded because the corrections are the useful part.** I reported that 11
+>   of 12 "elsewhere" reasons named a suite that never mentions its requirement. That was a
+>   path bug of mine; the real number is one. The repository's mapping was fine and I nearly
+>   filed a finding against it. Also: a behavioural test caught a defect in my OWN Sentry fix
+>   within minutes, which a source scan could never have seen, and I had to correct a rule the
+>   same day I wrote it because its assertion floor graded thoroughness instead of catching a
+>   gutted file.
+> - **One method rule worth carrying anywhere:** a mutation that reddens NOTHING is a claim
+>   about the guard, not a verdict on it, and must be checked before it is believed.
+> - Still the owner's, now seven and each recorded with its seam: AC-1's HTTP status and code,
+>   AC-10's semantics, AGENT_TOKENS_JSON's boot behaviour, AC-5's BYPASSRLS architecture,
+>   NFR-7's "AbortController" wording (needs the formal ratification NFR-4 and NFR-5 got),
+>   NFR-1's `.mjs` scope, NFR-6's production weakness (an APP deploy), and merging byahad #250
+>   and skills #36.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
