@@ -266,6 +266,34 @@
 >   0024 remains the one urgent owner action, and no gate in that repository can detect
 >   production migration drift at all, by design.
 
+>
+> **Update 2026-10-28 (later): PRODUCTION IS CAUGHT UP.** Read `HANDOVER.md` -> "Eleventh
+> stretch" before acting on anything above about migrations.
+>
+> - **Migrations 0016 to 0024 are APPLIED** to the live project, with the owner's explicit
+>   authorization. It went from 15 to 24. The AC-6 privacy leak and the AC-8 pg_temp
+>   shadowing hole are CLOSED LIVE, and because RLS is evaluated at READ time, 0024 covered
+>   rows that already existed.
+> - **CORRECTION to every earlier mention: it was NINE migrations, not four.** 0021 cannot be
+>   applied without 0016 to 0020. The four named were only the security-relevant ones.
+> - The deployed system was re-graded from the catalogues as
+>   `production-conformance-2026-10-28.md`. All four BROKEN LIVE rows are FIXED LIVE.
+> - **AC-7 moved to HOLDS; the tally is 1 FAILS / 14 PARTIAL / 8 HOLDS.** All three of its
+>   surfaces are pinned by test now, not by a judge's reading. It is NOT corroborated by an
+>   adversarial model pass and the record says so.
+> - **The method changed.** Judging and refuting with the same model is correlated error, so
+>   the confirmations were never corroboration; both documents are corrected. The part that
+>   worked was adversarial RE-MEASUREMENT, so it was rebuilt as tests: a shared
+>   comment-stripper, a rule that no guard may assert absence over raw source, a committed
+>   secret scan, an AC-7 server-action pin, and a pg_policy enumeration of every write
+>   surface. Writing the first found two LATENT instances of the defect five agent runs had
+>   been hunting one at a time.
+> - **AC-5 is the single FAILS**, with the measurement behind it: three loginable,
+>   password-bearing BYPASSRLS roles. Revoking is an outage, not a fix.
+> - Still the owner's: AC-1's typed error (a public HTTP code), AC-10's semantics,
+>   AGENT_TOKENS_JSON's boot behaviour, AC-5's architecture, NFR-6's production weakness (an
+>   APP deploy, not a migration), and merging byahad #250 and skills #36.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.

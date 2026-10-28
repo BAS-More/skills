@@ -1709,6 +1709,103 @@ AC-5's BYPASSRLS architecture; whether a secret scanner belongs in the required 
 the stray branch `claude/byahad-ac6-privacy-and-token-binding`; and merging #250 and #36.
 
 
+### Eleventh stretch: production caught up, the refutation turned into code, and a row finally moved
+
+THE ONE THAT MATTERS. **Migrations 0016 to 0024 are APPLIED to the live project.** It went
+from 15 to 24, with the owner's explicit authorization, in order. Nine sessions had recorded
+the gap and none had closed it, because production DDL was never ours to take unilaterally;
+this time it was asked for directly and granted.
+
+A CORRECTION TO EVERY EARLIER STRETCH THAT SAID "apply 0021 to 0024": it was NINE migrations,
+not four. 0021 cannot be applied without 0016 to 0020, which were also missing, because
+migrations are sequential. The four named were the security-relevant ones. Anyone acting on
+the old phrasing would have tried to skip five.
+
+Measured against the catalogue before and after, not inferred:
+
+  events_select            private.is_member(org_id)
+                        -> private.is_member(org_id) AND private.subject_is_visible(...)
+  private.* definer        search_path=public on 3 fns -> search_path="" on 5 fns
+  projects/tasks triggers  none -> 4 present
+  client write policies    4 -> 4, UNCHANGED
+
+The first line IS the AC-6 leak and its before-value is what proves the finding was real
+rather than inferred: org membership ALONE gated the read. The second is the AC-8 pg_temp
+shadowing hole. Both closed live, and because RLS is evaluated at READ time, 0024 covered rows
+that already existed, which no application change could do.
+
+The deployed system was then graded AGAIN from the catalogues, as
+`docs/phase-2-foundation/production-conformance-2026-10-28.md`. Applying a fix without
+re-measuring would have left a fix nobody checked, which is the defect this whole effort is
+about. All four BROKEN LIVE rows are FIXED LIVE; RLS is on all ten public tables; zero write
+policies lack the role gate; `events` is still the only publication table with prattrs NULL,
+the third independent confirmation of that retraction.
+
+AC-5 REMAINS THE SINGLE FAILS, now with the measurement rather than an assertion behind it:
+three roles (byahad_backup, byahad_dashboard, byahad_ingest) are loginable, password-bearing
+and BYPASSRLS, so on the dashboard read path the bound org_id is the only tenant boundary.
+Revoking it is an outage, not a fix.
+
+A LIMIT ON MY OWN CLAIM, recorded because applying migrations was my action: the
+before-snapshot captured policies, functions, triggers and columns but NOT roles, so I cannot
+say from measurement whether byahad_backup predated the apply. It almost certainly did, since
+0016 creates it only `if not exists` and sets NO password while the role has one. That is an
+inference from the migration's content and is written down as one.
+
+THE METHOD CHANGED, BECAUSE THE OWNER WAS RIGHT TO CHALLENGE IT. The objection: judging and
+refuting with the SAME model is correlated error, so it is largely a waste of money. Partly
+right, and it forced a correction to this campaign's own headline. The pass-1 confirmations had
+been presented as corroboration; they are not, because agreement between two runs of one model
+is one opinion stated twice. Both documents now say "no refuter dislodged it", which is the
+thinner and truer claim.
+
+But the data also showed WHY the refutation had worked when it worked: almost every win was a
+MEASUREMENT, not a judgement. A refuter ran the mutation a prior pass had only described. One
+queried prattrs. One ran a proposed regex and found it red on a correct tree. Model diversity
+was not the mechanism; adversarial RE-MEASUREMENT was. So the running refuter fleet was
+stopped mid-flight, saving roughly 750k tokens, and the valuable part was rebuilt as tests:
+
+  tests/helpers/source-scan.ts            the shared comment-stripper
+  tests/unit/text-scanning-guards.test.ts no guard may assert absence over RAW source
+  tests/unit/no-secrets-in-code.test.ts   NFR-3 clause 1, 344 committed files, 8 patterns
+  tests/unit/human-console-write-surfaces.test.ts  AC-7's server-action premise
+  plus a pg_policy enumeration of every write surface, in rls.adversarial
+
+Writing the first of those immediately found two LATENT instances of the very defect five
+separate agent runs had been hunting one at a time. That is the argument for code over a
+second provider, and no cross-provider model was available in the session anyway.
+
+AC-7 MOVED TO HOLDS. Tally 1 FAILS / 14 PARTIAL / 8 HOLDS, from 1 / 15 / 7. This reversed a
+position held firmly for several turns, and the justification is new evidence rather than
+pressure: the clause has three surfaces and all three are now pinned by test. It is NOT
+corroborated by an adversarial model pass and the record does not pretend otherwise.
+
+TWO MIS-SCOPINGS FOUND BY RE-READING MY OWN "OWNER DECISION" LIST, which is the lesson worth
+carrying. Twice, something filed as the owner's turned out to be mine:
+  * NFR-3's "no secrets in code" was filed as needing a CI step. A test in the gating job
+    closes it with no tool, no credential and no workflow change.
+  * AC-7's write-surface enumeration was filed as a judge's reading. pg_policy makes it finite.
+Both were found by asking which items were justified by a TOOL or a CONTRACT rather than by a
+failure mode. That question is the one to ask next time.
+
+AND THE MOST INSTRUCTIVE MISTAKE OF THE WHOLE CAMPAIGN, mine, made by hand. Checking AC-7's
+server-action premise I grepped for a "use server" directive, got TWO files, and told the owner
+a judge had mis-enumerated. The second hit was the phrase inside a COMMENT in app/page.tsx. The
+judge was right; my grep was wrong, in exactly the way five guards here were wrong, ONE COMMIT
+after shipping the helper that prevents it. Corrected in the same message. The test now reads
+through that helper and its guard-the-guard case is that exact file.
+
+Also recorded: `git checkout <file>` reverts to HEAD and so DISCARDS an uncommitted fix on that
+file. It silently lost the NFR-7 client binding and a rule widening, both reapplied. Commit
+before mutating, or back up and md5-check on restore.
+
+STATE. byahad PR #250, 28 commits, all five gates green on 98567bf: 135 files, 1482 passed plus
+5 expected-fail. skills PR #36 green. Still the owner's: AC-1's typed error (changes a public
+HTTP code), AC-10's convergence semantics (its own code comment defers them), AGENT_TOKENS_JSON
+(fail-fast at boot versus fail-closed at use), AC-5's BYPASSRLS architecture, NFR-6's remaining
+production weakness (an APP deploy, not a migration), and merging both PRs.
+
+
 ## Session 2026-10-20: review-and-continue cheap-model tier
 
 Scope: skills/personal/review-and-continue; branch feat/review-and-continue-cheap-models.
