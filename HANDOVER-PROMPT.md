@@ -227,6 +227,44 @@
 >   premise, one would have failed on correct code), and TWO guards nearly shipped that would
 >   have failed on a correct tree because their patterns matched PROSE inside comments. Both
 >   were caught by running the scan over the tree BEFORE writing the assertion.
+>   **CORRECTED 2026-10-28: two MORE instances of that second trap shipped, in this very
+>   stretch, and catching the first two is what made it look handled. See the update below.**
+
+>
+> **Update 2026-10-28: the nine fixes were re-measured and they moved ONE row between them.**
+> Read `HANDOVER.md` -> "Tenth stretch" before acting on anything above about PR #250.
+>
+> - **The tally is 1 FAILS, 15 PARTIAL, 7 HOLDS**, from 1 / 16 / 6, committed as
+>   `docs/phase-2-foundation/verdicts-2026-10-28.md` and measured against the tag
+>   `prd-verdicts-2026-10-28`. Twelve rows, each graded by a judge and then by an independent
+>   refuter briefed to overturn it; the refuter's verdict is the one of record.
+> - **Exactly one row moved, AC-13, and its fixes were in #249 rather than in the nine.**
+>   AC-7's judge graded it HOLDS and its refuter overturned that back to PARTIAL.
+> - **ALL NINE rows the triage repaired returned PARTIAL again, every one refuter-confirmed.**
+>   The bullet above is right that nine guards had no reachable failure state and right that
+>   it closed them. What a reader must not infer is that conformance improved. **Guard
+>   coverage and clause satisfaction are different things:** a judge grades the PRD clause,
+>   and most of these clauses are unmet in the IMPLEMENTATION, not merely unguarded. AC-1
+>   asks for "a typed validation error" while `lib/db/ingest.ts:170` discards the `ZodError`
+>   for the bare string `"invalid_event_shape"`. No test change closes that.
+> - **The comment-in-prose trap shipped twice.** AC-14's guard in `49ae7ce` went red when a
+>   refuter edited ONLY a comment in `lib/rules/evaluate.ts` to say it never calls `fetch()`,
+>   and it was simultaneously blind to `globalThis["fetch"]`. NFR-4's `continue-on-error`
+>   check in `d6ea05e` was a whole-file regex. A fifth instance was proposed and rejected
+>   after a refuter ran it. Catching an instance twice is not fixing the class, and patching
+>   the fourth regex individually is what produced the fifth.
+> - **The remedy is one helper**, `tests/helpers/source-scan.ts`, read by all four
+>   text-scanning guards. It tracks string AND REGEX literals, because
+>   `lib/bridges/heartbeat-config.ts:58` holds an escaped-slash regex inside the scanned
+>   directories and mistaking it for a comment would make those guards BLIND. Both shipped
+>   defects are measured old-guard-beside-new in the tenth stretch.
+> - **PR #250 is fifteen commits, all five gates green on `5f489b8`**: 132 files, 1451 passed
+>   plus 5 expected-fail, freeze check clean. Its title and body were rewritten, because the
+>   old body carried the "caught both times" claim.
+> - **AC-8 is FAILS for the DEPLOYED system, not PARTIAL.** 0023 is unapplied, so the
+>   `pg_temp` shadowing route on `memberships` is open live with CI green. Applying 0021 to
+>   0024 remains the one urgent owner action, and no gate in that repository can detect
+>   production migration drift at all, by design.
 
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.

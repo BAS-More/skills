@@ -1,7 +1,7 @@
 # BAS-More/skills: active Codex handover
 
 **Status:** ACTIVE
-**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD verdict table was RE-JUDGED on 2026-10-27 and AC-6 moved FAILS to HOLDS, so the tally is now 1 FAILS, 16 PARTIAL, 6 HOLDS, committed as `docs/phase-2-foundation/verdicts-2026-10-27.md`. Twenty fixes A to X are done (H blocked), each dry-run before the next and each mutation-proven; A, B and C are in byahad `main`, and D through X are in draft PR #249. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE AND ALL FIVE ARE GREEN on `3766917`, all twenty-six commits. WHAT MATTERS MOST THERE IS NOT IN THE REPOSITORY: the live Supabase project has applied migrations 0001 to 0015 while the repo holds 24, so NINE migrations including every security hardening from 0021 to 0024 have never been applied, and a private task title is currently pushed to every org member over Realtime. Applying them is an owner decision. See "Eighth stretch".
+**Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD verdict table was RE-JUDGED again on 2026-10-28 against the tag `prd-verdicts-2026-10-28`, and the tally is now 1 FAILS, 15 PARTIAL, 7 HOLDS, committed as `docs/phase-2-foundation/verdicts-2026-10-28.md`. Exactly one row moved, and NONE of the nine rows whose guards were repaired on 2026-10-28 moved at all: guard coverage and clause satisfaction are different things. See "Tenth stretch". Twenty fixes A to X are done (H blocked), each dry-run before the next and each mutation-proven; A, B and C are in byahad `main`, and D through X are in draft PR #249. THE FULL FIVE-GATE RUN ON THE FINAL STATE IS DONE AND ALL FIVE ARE GREEN on `3766917`, all twenty-six commits. WHAT MATTERS MOST THERE IS NOT IN THE REPOSITORY: the live Supabase project has applied migrations 0001 to 0015 while the repo holds 24, so NINE migrations including every security hardening from 0021 to 0024 have never been applied, and a private task title is currently pushed to every org member over Realtime. Applying them is an owner decision. See "Tenth stretch" first, then "Eighth stretch".
 **Updated:** 2026-10-27, later (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -1588,6 +1588,126 @@ possible resolutions changes either the product or the security boundary; AC-5's
 architecture, where revoking BYPASSRLS is an outage rather than a fix because no INSERT policy
 exists on five tables and auth.uid() is NULL on a server connection; and deleting the stray
 remote branch `claude/byahad-ac6-privacy-and-token-binding`.
+
+### Tenth stretch: the nine fixes re-measured, and they moved one row between them
+
+THE RESULT FIRST, BECAUSE IT IS NOT THE ONE THE NINTH STRETCH POINTED AT. The twelve rows
+that the triage touched or left open were re-judged against the tag `prd-verdicts-2026-10-28`
+(`272e187`), twenty four agents, each row graded by a judge and then by an independent refuter
+briefed to overturn it. Where a refuter reported, its verdict is the verdict of record.
+
+The tally moves 1 FAILS, 16 PARTIAL, 6 HOLDS to **1 FAILS, 15 PARTIAL, 7 HOLDS**. Exactly ONE
+row moved, AC-13, and its fixes were in #249 rather than in the nine. AC-7's judge graded it
+HOLDS and its refuter overturned that back to PARTIAL. Committed as
+`docs/phase-2-foundation/verdicts-2026-10-28.md`.
+
+**All nine rows the triage repaired returned PARTIAL again, every one confirmed by its
+refuter.** The ninth stretch was right that nine guards had no reachable failure state and
+right that it closed them. It was the inference that a reader would draw next that was wrong,
+and this stretch exists to block it: **guard coverage and clause satisfaction are different
+things.** A judge grades the PRD clause. Most of these clauses are unmet in the
+IMPLEMENTATION, not merely unguarded, so repairing the guard cannot move the row. AC-1 is the
+clearest case: the clause asks for "a typed validation error", and `lib/db/ingest.ts:170`
+discards the `ZodError` for the bare string `"invalid_event_shape"`, which the route discards
+again at `:416-419`, answering `400 invalid_event` for both a schema failure and an
+authorization refusal. No improvement to any test closes that.
+
+So nine vacuous guards became nine load-bearing ones, which is worth having because a vacuous
+guard is a place a regression ships green. It is not progress against the PRD and the tally
+must not be read as though it were.
+
+THE SECOND FINDING IS A DEFECT IN MY OWN WORK, AND IT IS THE SAME ONE TWICE OVER. A guard that
+greps source text also matches the file's own comments, so a comment DENYING what the rule
+forbids reddens a correct tree. Five instances of that one mistake now exist in this campaign,
+and TWO OF THEM SHIPPED while the other three were being fixed:
+
+  NFR-7 rule 4 and NFR-3's env scan   caught before commit, by running the scan over the tree
+                                      before writing the assertion rather than after
+  AC-14 `tests/unit/rules.test.ts`    SHIPPED in `49ae7ce`. A refuter edited ONLY the header
+                                      comment of `lib/rules/evaluate.ts`, to say it never
+                                      calls `fetch()`, and the suite went red, 1 failed of 20
+  NFR-4 `continue-on-error`           SHIPPED in `d6ea05e`, a whole-file regex over `ci.yml`
+  a proposed NFR-7 rule-1 widening    rejected after a refuter ran it: 1 failed of 18, on the
+                                      JSDoc prose at `scripts/check-migration-drift.mjs:80`
+
+The ninth stretch recorded the first two and called them caught. That record now reads as a
+boast that the next two falsified, so note the lesson properly: catching an instance of a
+defect class twice is not the same as fixing the class, and the fifth instance was produced by
+patching the fourth regex individually.
+
+THE FIX IS ONE HELPER, NOT FIVE REGEXES. `tests/helpers/source-scan.ts` strips comments while
+preserving length, line breaks and therefore line numbers, and all four text-scanning guards
+now read through it. It tracks string AND REGEX literals, because
+`lib/bridges/heartbeat-config.ts:58` holds `/^https?:\/\//` inside the directories NFR-3 and
+NFR-7 scan: mistaking that for a comment would blank the rest of a real line and make those
+guards BLIND, which is worse than the false positive being fixed. Three mutations on the
+helper, each discriminating; the naive form reddens exactly the three string and regex cases
+including that real file's line.
+
+Then both shipped defects measured against real source, old guard beside new:
+
+  AC-14  Z9  a comment denying fetch() and node:http    old 1 failed of 20   new 22 passed
+  AC-14  Z4  `const _leak = globalThis["fetch"]`        old 20 passed        new 1 failed of 22
+  NFR-4  W3  `if:` on the audit step                    old 10 passed        new 1 failed of 14
+  NFR-4  W4  step moved to a non-required job           old 10 passed        new 1 failed of 14
+  NFR-4  W5  a comment naming `continue-on-error`       old 1 failed of 10   new 14 passed
+
+AC-14's rule now also catches computed and aliased access through a global object, and states
+in the file that a source scan CANNOT prove reachability: the type-only-import rule carries
+that clause, the token scan is a backstop.
+
+ONE MORE VACUOUS GUARD, FOUND BY THE REFUTATION RATHER THAN BY ME. A test named
+"NFR-2: malformed event body -> 400, never touches the database" asserted the status and the
+error body and stopped, so the database half of its own name was guarded by nothing. It now
+counts every base table from `information_schema`, with two floors so an empty catalogue or an
+empty database cannot satisfy it vacuously, and it reddens when the rejection path is mutated
+to write an `activity_feed` row. The refuter found it by noticing the judge had cited the
+test's TITLE as its content, which is the vacuity shape this project has been cataloguing.
+
+TWO ITEMS RESOLVED AS RECORDS RATHER THAN AS CODE, each because it is not mine to decide:
+
+`scripts/check-migration-drift.mjs` is in no gate BY DESIGN. It needs read access to the
+production migration table, and a production credential in CI is a security decision with an
+owner rather than a wiring task. The consequence is now stated plainly instead of left
+implied: NO AUTOMATED CHECK IN THAT REPOSITORY CAN DETECT PRODUCTION MIGRATION DRIFT, because
+every gate builds its schema from `supabase/migrations/` with `readdirSync`. Until 0021 to
+0024 are applied, a human running that command is the only detector.
+
+`AGENT_TOKENS_JSON` is credential-bearing and absent from both env schemas, and an earlier
+record implied that gap was closed. It was not, and that is corrected: `27bdd2c` added a
+declared EXCEPTION for it, which is the opposite of closing it. But two mutations show its own
+validation is load-bearing (a permissive map on malformed JSON gives 1 failed of 13, the shape
+schema bypassed gives 2 failed of 13), so the whole remaining delta is fail-fast at boot
+versus fail-closed at use. `lib/env.ts:165-171` already records that repository trying the
+change for two analogous variables, reverting it, and concluding it should be made "for both
+variables at once or neither". Doing it for one would contradict that and turn a
+misconfiguration that currently 401s every agent into one that refuses to boot.
+
+STATE. byahad PR #250, fifteen commits, all five gates green on `5f489b8`: 132 test files,
+1451 passed plus 5 expected-fail, and the post-run freeze check confirms HEAD and the tree
+were unmoved for the whole run. The PR title and body were rewritten, because the old body
+carried the claim that the comment-regex defect had been "caught both times".
+
+WHERE PRODUCTION STILL DIFFERS, and this is unchanged and still the thing that matters most.
+It has applied 0001 to 0015. **AC-8 is FAILS for the deployed system, not PARTIAL**: 0023's
+SECURITY DEFINER hardening is unapplied, so the `pg_temp` shadowing route on `memberships` is
+open live with CI green. AC-6's leak is open live, and 0024 closes it for EXISTING rows
+because RLS is evaluated at read time, which no application-side change can do.
+
+METHOD NOTES. The eighth stretch's lesson was to freeze the tree or judge a tag, and judging a
+tag worked: no refuter had to correct its judge's description of a moving tree this time,
+against five of five last time. The new note is that the refutation stage paid for itself
+again in a way a cheaper check would not have: one refuter OVERTURNED its judge outright
+(AC-7), three kept the label while refuting every stated reason for it, and eleven of twelve
+needed a factual correction. A judge agreeing with itself is not evidence.
+
+STILL THE OWNER'S, never unilateral: apply 0021 to 0024, the only item with ongoing cost; keep
+or revert fix `D`'s 200 to 422; AC-1's typed-error fix, which changes an HTTP response code and
+rewrites tests other rows assert against; fix `H`'s credential-binding shape; AC-10's
+convergence semantics, which `lib/db/ingest.ts:255-258` documents as a deliberate deferral;
+AC-5's BYPASSRLS architecture; whether a secret scanner belongs in the required job; deleting
+the stray branch `claude/byahad-ac6-privacy-and-token-binding`; and merging #250 and #36.
+
 
 ## Session 2026-10-20: review-and-continue cheap-model tier
 
