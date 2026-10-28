@@ -1462,6 +1462,133 @@ STILL OPEN, and all but the last two are owner decisions rather than defects:
 - One chore still needs a human: delete the stray remote branch
   `claude/byahad-ac6-privacy-and-token-binding`.
 
+### Ninth stretch: both PRs merged, the sixteen PARTIALs triaged at last, and a claim retracted
+
+OWNER ACTIONS SINCE THE EIGHTH STRETCH. byahad #249 is MERGED, and it was a SQUASH, as
+`59c0eea`. That matters more than it sounds: none of the lettered SHAs (`D` through `AA`) are
+ancestors of `main` any more, so `git log f921246..main` does not carry them and a reader
+looking for fix `U` by its SHA will not find it. Only the content survives. skills #35 is also
+merged, as `1098354`, which is why this branch was restarted from `main` rather than continued.
+
+THE SIXTEEN PARTIAL VERDICTS HAD NEVER BEEN TRIAGED, and that was the real gap. Eight sessions
+reported the tally (1 FAILS, 16 PARTIAL, 6 HOLDS) rather than working it. Triage separated
+repo-fixable from owner-decision from production-blocked. Nine rows were repo-fixable, and in
+EIGHT of them the guard that already existed had no reachable failure state.
+
+All nine are closed on branch `claude/byahad-partial-triage`, PR #250, eleven commits, with all
+five gates green on `272e187`: 131 test files, 1435 passed plus 5 expected-fail, coverage
+97.15 / 92.46 / 97.22 / 97.76. The suite count moved 1414 to 1435, exactly the 21 cases added,
+and the file count 130 to 131, exactly the one new inventory file. That arithmetic is the
+cheapest check that the suite ran what was committed.
+
+  AC-10   the test NAMED for AC-10 re-sent the same event id, so the PRIMARY KEY produced the
+          "duplicate" and the idempotency index could be deleted with the test still green
+  AC-4    five of getKpis' SEVEN org predicates were unasserted, on the one path where
+          byahad_dashboard holds BYPASSRLS and the bound parameter is the only tenant boundary
+  AC-1    "returning a typed validation error" was proven by nothing: all seven AC-1 cases
+          assert only `success === false`
+  AC-8    no test anywhere had attempted a client-role INSERT or UPDATE on `memberships`, and
+          two comments in the file claimed it was "covered separately below"
+  NFR-7   the inventory's regex needs `(` straight after `fetch`, so it could not match
+          `fetcher(`, which is how ALL SIX originating outbound calls are written
+  AC-14   "with no LLM call" existed only as a header comment
+  NFR-4   ci.yml could lose a gate step entirely, or soften it with continue-on-error, and
+          nothing noticed, because the parity check only iterates steps that exist
+  NFR-3   no env inventory existed, so a new unvalidated process.env read could appear anywhere
+  NFR-6   a pg DatabaseError's `detail` quotes the conflicting key VALUES and arrives under
+          `err`, so events.payload could reach a log line with every caller behaving correctly
+
+NFR-6 IS THE ONLY ONE THAT CHANGED BEHAVIOUR. The other eight are guards. Three of those eight
+(NFR-7, NFR-3, and AC-14's clause) sit over code that was ALREADY CORRECT, which each commit
+says plainly, because a guard written over correct code looks exactly like a fix and proves
+nothing until it is mutated.
+
+A CLAIM FROM THE EIGHTH STRETCH IS RETRACTED, and it was load-bearing. That stretch said the
+realtime publication carries `payload` "explicitly" among eleven columns, and that both halves
+of the chain had been checked. Only one had. The observation came from
+`pg_publication_tables.attnames`, and that view returns every column of the table WHETHER OR
+NOT a column list is set, so it cannot tell an explicit list from no list. Only
+`pg_publication_rel.prattrs` separates them, and nothing had queried it. Queried now,
+read-only: `prattrs` is NULL, so there is no column list at all.
+
+The leak conclusion is unchanged and in fact simpler. What changes is the mitigation this
+handover recommended twice: restricting the publication would mean ADDING a column list where
+none exists, not dropping one entry from an existing one, and once a list exists any column
+added to `events` later is silently not published.
+
+AND THE CHEAPER MITIGATION IS PROBABLY UNNECESSARY, which is the better finding. Migration
+0024 re-creates `events_select` with `private.subject_is_visible(...)`, and RLS is evaluated at
+READ time, so applying it closes the leak for EXISTING ROWS as well as new ones. No
+application-side change can do that. An ingest-time payload redaction was designed, costed and
+then REJECTED: it adds nothing over 0024, cannot touch existing rows, and would permanently
+destroy every task.created title including from the creator and org admins whom AC-6
+explicitly requires to retain it. It would have been an AC-6 violation presented as an AC-6
+fix. So the live leak is OPERATIONAL, not architectural: apply 0021 to 0024.
+
+FOUR PROPOSED KILLING MUTATIONS COULD NOT KILL ANYTHING, and catching that was worth more than
+the proposals. The triage was itself adversarially refuted, and the refuters found:
+
+  AC-8's    `create policy ... for insert using (true)` is not valid Postgres (42601, "only
+            WITH CHECK expression allowed for INSERT"). It fails at schema build and reddens
+            EVERY db test, which is the reddens-everything class rather than a kill.
+  AC-14's   deleting evaluate.ts:61-62 leaves an unmatched `else if`, a syntax error that
+            reddens every importer.
+  NFR-8's   premise was simply false: handle-events-post.ts:328 IS
+            `deps.ipRateLimiter ?? DEFAULT_IP_RATE_LIMITER`.
+  fix D's   proposed end-to-end test would return 400, not 422, because
+            credentialSubjectRejection short-circuits before the 422 arm. It would have failed
+            on correct code.
+
+TWO GUARDS NEARLY SHIPPED THAT WOULD HAVE FAILED ON A CORRECT TREE, both caught the same way,
+by running the scan over the tree BEFORE writing the assertion rather than after. NFR-7's
+obvious pattern `/fetcher\s*\(/` matches polling-adapter.ts's own JSDoc, which contains
+"fetcher (no jsdom, * no real network)"; the paren-walker captures that as an argument list
+with no signal. NFR-3's naive scan reports NEXT_PUBLIC_ and X as undeclared variables, because
+lib/supabase/client.ts quotes `process.env.NEXT_PUBLIC_*` while explaining that it STOPPED
+reading them inline, and lib/bridges/sidecar-server.ts quotes `Number(process.env.X ?? "8787")`
+as an example of a bug. Neither variable exists. That is now five guards this campaign has
+declined or corrected for failing on correct code, and every refusal is written down where the
+guard would have gone.
+
+THE ARTIFACT THE WHOLE EFFORT HAD BEEN MISSING now exists:
+`docs/phase-2-foundation/REMEDIATION-PLAN.md` in byahad. Until this stretch the lettered fixes
+lived only in commit messages, and the open items only in THIS FILE, in a different
+repository. A byahad reader could not see what was found, fixed, proven or outstanding without
+reconstructing it from git log, and the squash merge removed even that. The plan states the
+dry-run protocol as four checkable steps, and names everything dropped with its reason so it is
+not rediscovered as an oversight.
+
+TWO MISTAKES OF MINE, recorded because both are repeats of lessons this campaign had already
+written down.
+
+I ran lint and committed in the same command without reading its output, and shipped a
+`noUnsafeOptionalChaining` correctness error that would have turned the Lint gate red in CI. A
+green vitest run says nothing about tsc or biome, which this handover already said twice. It
+was caught on the next check and fixed before the commit was pushed, so no commit on the branch
+is red for a bisect.
+
+And I ran a mutation batch against supabase/migrations while adversarial refuters were reading
+the same working tree. Two of them reported that `0001_schema.sql` carried an unreverted
+`-- MUTATION M1` when they began. I had checked the workflow journal, seen every agent marked
+done, and called it safe; that snapshot was taken AFTER the overlap had already happened. They
+flagged it themselves instead of being misled, which was their diligence and not my
+sequencing. Never mutate a shared tree while anything else is reading it.
+
+STILL OPEN AFTER THIS STRETCH. Deferred with reasons rather than open: NFR-3's "no secrets in
+code" clause needs a secret-scanning CI step, which changes the build contract rather than
+adding a guard; NFR-6's sidecar sink is deliberately not pino, because lib/log imports ./env
+and that is wrong for a separate process; NFR-7's Sentry transports need a custom transport
+because NodeTransportOptions exposes neither a signal nor a timeout.
+
+Needing the owner, unchanged in substance: apply migrations 0021 to 0024 (the only urgent one);
+keep or revert fix D's 200 to 422, which is now live in `main`; the credential-binding shape
+for fix H, still untouched on disk, where the PRD is silent, decisions-log.md:89 and
+0003_agent_tokens.sql:29 say per-agent, emitter-setup.md:5 disagrees, and each of the three
+possible resolutions changes either the product or the security boundary; AC-5's BYPASSRLS
+architecture, where revoking BYPASSRLS is an outage rather than a fix because no INSERT policy
+exists on five tables and auth.uid() is NULL on a server connection; and deleting the stray
+remote branch `claude/byahad-ac6-privacy-and-token-binding`.
+
 ## Session 2026-10-20: review-and-continue cheap-model tier
 
 Scope: skills/personal/review-and-continue; branch feat/review-and-continue-cheap-models.

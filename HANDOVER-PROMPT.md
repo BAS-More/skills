@@ -194,6 +194,40 @@
 >   One would have failed on a correct implementation; the other could not fail at all. If you
 >   read the verdict file and think an obvious fix is missing, check that section first.
 
+> **Update 2026-10-28. Nothing below moved; the work was in byahad again. BOTH PRs ARE NOW
+> MERGED and two claims in the block above are WRONG.** byahad #249 merged as `59c0eea` and
+> skills #35 as `1098354`, which is why this branch was restarted from `main`.
+>
+> - **#249 WAS SQUASHED.** None of the lettered SHAs (`D` through `AA`) are ancestors of
+>   byahad `main` any more, so looking one up by its SHA fails and only the content survives.
+> - **THE PUBLICATION CLAIM IS RETRACTED.** The block above says the realtime publication
+>   carries `payload` "explicitly" among eleven columns, with both halves checked. Only one
+>   was. `pg_publication_tables.attnames` returns every column WHETHER OR NOT a column list
+>   is set, so it cannot tell an explicit list from no list; only
+>   `pg_publication_rel.prattrs` can, and nothing had queried it. It is NULL: there is no
+>   column list. The leak finding stands, but the mitigation this prompt recommended twice is
+>   a different operation, since it would mean ADDING a list where none exists.
+> - **AND THAT MITIGATION IS PROBABLY UNNECESSARY, which is the better news.** Migration 0024
+>   re-creates `events_select` with `private.subject_is_visible(...)`, and RLS is evaluated at
+>   READ time, so applying it closes the leak for EXISTING rows too. No application-side
+>   change can do that. An ingest-time payload redaction was designed and then rejected: it
+>   adds nothing over 0024 and would destroy every task.created title, including from the
+>   creator and admins whom AC-6 requires to retain it. The live leak is OPERATIONAL, not
+>   architectural. Applying 0021 to 0024 is still the one urgent owner action.
+> - **THE SIXTEEN PARTIALs ARE TRIAGED AT LAST**, which eight sessions had reported rather
+>   than worked. Nine rows were repo-fixable and all nine are closed in PR #250 (eleven
+>   commits, all five gates green on `272e187`, 131 files, 1435 passed plus 5 expected-fail).
+>   Eight of the nine were guards with no reachable failure state. Read `HANDOVER.md` ->
+>   "Ninth stretch" for the list and the mutation evidence.
+> - **`docs/phase-2-foundation/REMEDIATION-PLAN.md` NOW EXISTS in byahad.** Until this
+>   stretch the lettered fixes lived only in commit messages and the open items only in THIS
+>   file, in a different repository. Prefer the plan over this prompt for byahad state.
+> - Two traps worth carrying: FOUR proposed killing mutations could not kill anything (one was
+>   invalid SQL that reddens every db test, one left a syntax error, one rested on a false
+>   premise, one would have failed on correct code), and TWO guards nearly shipped that would
+>   have failed on a correct tree because their patterns matched PROSE inside comments. Both
+>   were caught by running the scan over the tree BEFORE writing the assertion.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
