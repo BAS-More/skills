@@ -340,6 +340,31 @@
 >   NFR-7's "AbortController" wording (needs the formal ratification NFR-4 and NFR-5 got),
 >   NFR-1's `.mjs` scope, NFR-6's production weakness (an APP deploy), and merging byahad #250
 >   and skills #36.
+>
+> **SESSION STOPPED 2026-10-28 08:53 UTC on the owner's instruction. Read this before acting.**
+>
+> - **Everything is committed and pushed.** byahad PR #250 at `6ab3205`, 36 commits. skills
+>   PR #36 at `417f51a`. Both working trees clean, zero unpushed commits in either.
+> - **skills CI is GREEN**: `Skill invariants` run 49 on `417f51a`, so all fifteen rules pass
+>   in CI as well as locally.
+> - **BYAHAD CI HAS NO VERDICT YET.** Run 485 was still in progress on `52da299` when work
+>   stopped. Run 484 was CANCELLED by the push that superseded it, which is
+>   `concurrency: cancel-in-progress` and NOT a failure. The last green run was 483 on
+>   `7de86ab`, three commits earlier. Check 485 first; if it is red, root-cause it from the
+>   job log rather than calling it a flake, because the local gate passed the same work.
+> - **No automated follow-up is armed.** The scheduled check-in was deleted and the PR
+>   subscription dropped, both on the stop instruction, so nothing will wake a session to act
+>   on a red CI run. That is deliberate and it means a human has to look.
+> - **A CodeQL finding on this round's own code** was fixed in `52da299`:
+>   `req.replace("-", "-")` inside the new PRD-level guard, a hyphen replaced with itself and
+>   written as if it were escaping. Behaviour was never wrong, so no test caught it and no
+>   test ever would have, because a no-op is invisible to a behavioural test. Dead code inside
+>   a guard built to catch guards that cannot fail, found by a scanner rather than by the
+>   suite.
+> - **Two small repo items remain in byahad**, both named and neither started:
+>   `tests/db/tenant-isolation-evidence.test.ts` has NO positive control, so it would pass in
+>   full with every policy dropped, and NFR-1 gap (b), the shipped `.mjs` emitter and sidecar
+>   outside tsconfig and lint.
 
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.

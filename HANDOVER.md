@@ -1871,10 +1871,26 @@ the guard, not a verdict on it, and has to be checked before it is believed. The
 attempt at the AC-11 mutation changed one of TWO citations in the same file and so proved
 nothing about the rule it was testing.
 
-STATE. byahad PR #250, 34 commits, pushed as `38e66ec`. The last full five-gate run was on
-`fb85371`; the three commits after it are two mutation-proven test files and documentation,
-verified by targeted runs plus typecheck and lint, so CI on the pushed head is the
-authority. Repo work still outstanding there is small and named:
+STATE AT SESSION STOP, 2026-10-28 08:53 UTC. byahad PR #250, 36 commits, pushed as
+`6ab3205`. skills PR #36, pushed as `417f51a`, and its `Skill invariants` run 49 is GREEN
+in CI, so all fifteen publication rules pass there as well as locally.
+
+CHECK BYAHAD CI FIRST. Run 485 was still IN PROGRESS on `52da299` when work stopped, so no
+CI verdict exists for the byahad head. Run 484 was CANCELLED by the push that superseded
+it, which is `ci.yml`'s `concurrency: cancel-in-progress` behaviour and NOT a failure
+signal; the last green run was 483, on `7de86ab`. The last full five-gate LOCAL run was on
+`fb85371`, and four commits landed after it verified by targeted suite runs plus typecheck
+and lint rather than by a full gate, so re-running `scripts/local-gate.sh` on the head is
+the cheap way to close that gap. The byahad continuation file says all of this too.
+
+A CODEQL FINDING ON THIS ROUND'S OWN CODE, fixed in `52da299`, and the most instructive
+defect of the round because no test here could ever have caught it. The new PRD-level guard
+contained `req.replace("-", "-")`, replacing a hyphen with itself, written as if it were
+escaping one before interpolating a requirement id into a RegExp. Behaviour was never
+wrong, so every test passed and always would have: a no-op is invisible to a behavioural
+test. It was dead code inside a guard built specifically to catch guards that cannot fail,
+and a third-party scanner found it rather than the suite. Same column as the Sentry timer
+bug: both were in this round's own fixes. Repo work still outstanding there is small and named:
 `tests/db/tenant-isolation-evidence.test.ts` has NO positive control, since all eight of
 its tests assert zero rows and it would pass in full with every policy dropped, and NFR-1
 gap (b), the shipped `.mjs` emitter and sidecar sitting outside tsconfig and lint. Seven
