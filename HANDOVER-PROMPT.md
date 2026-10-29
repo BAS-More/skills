@@ -194,6 +194,178 @@
 >   One would have failed on a correct implementation; the other could not fail at all. If you
 >   read the verdict file and think an obvious fix is missing, check that section first.
 
+> **Update 2026-10-28. Nothing below moved; the work was in byahad again. BOTH PRs ARE NOW
+> MERGED and two claims in the block above are WRONG.** byahad #249 merged as `59c0eea` and
+> skills #35 as `1098354`, which is why this branch was restarted from `main`.
+>
+> - **#249 WAS SQUASHED.** None of the lettered SHAs (`D` through `AA`) are ancestors of
+>   byahad `main` any more, so looking one up by its SHA fails and only the content survives.
+> - **THE PUBLICATION CLAIM IS RETRACTED.** The block above says the realtime publication
+>   carries `payload` "explicitly" among eleven columns, with both halves checked. Only one
+>   was. `pg_publication_tables.attnames` returns every column WHETHER OR NOT a column list
+>   is set, so it cannot tell an explicit list from no list; only
+>   `pg_publication_rel.prattrs` can, and nothing had queried it. It is NULL: there is no
+>   column list. The leak finding stands, but the mitigation this prompt recommended twice is
+>   a different operation, since it would mean ADDING a list where none exists.
+> - **AND THAT MITIGATION IS PROBABLY UNNECESSARY, which is the better news.** Migration 0024
+>   re-creates `events_select` with `private.subject_is_visible(...)`, and RLS is evaluated at
+>   READ time, so applying it closes the leak for EXISTING rows too. No application-side
+>   change can do that. An ingest-time payload redaction was designed and then rejected: it
+>   adds nothing over 0024 and would destroy every task.created title, including from the
+>   creator and admins whom AC-6 requires to retain it. The live leak is OPERATIONAL, not
+>   architectural. Applying 0021 to 0024 is still the one urgent owner action.
+> - **THE SIXTEEN PARTIALs ARE TRIAGED AT LAST**, which eight sessions had reported rather
+>   than worked. Nine rows were repo-fixable and all nine are closed in PR #250 (eleven
+>   commits, all five gates green on `272e187`, 131 files, 1435 passed plus 5 expected-fail).
+>   Eight of the nine were guards with no reachable failure state. Read `HANDOVER.md` ->
+>   "Ninth stretch" for the list and the mutation evidence.
+> - **`docs/phase-2-foundation/REMEDIATION-PLAN.md` NOW EXISTS in byahad.** Until this
+>   stretch the lettered fixes lived only in commit messages and the open items only in THIS
+>   file, in a different repository. Prefer the plan over this prompt for byahad state.
+> - Two traps worth carrying: FOUR proposed killing mutations could not kill anything (one was
+>   invalid SQL that reddens every db test, one left a syntax error, one rested on a false
+>   premise, one would have failed on correct code), and TWO guards nearly shipped that would
+>   have failed on a correct tree because their patterns matched PROSE inside comments. Both
+>   were caught by running the scan over the tree BEFORE writing the assertion.
+>   **CORRECTED 2026-10-28: two MORE instances of that second trap shipped, in this very
+>   stretch, and catching the first two is what made it look handled. See the update below.**
+
+>
+> **Update 2026-10-28: the nine fixes were re-measured and they moved ONE row between them.**
+> Read `HANDOVER.md` -> "Tenth stretch" before acting on anything above about PR #250.
+>
+> - **The tally is 1 FAILS, 15 PARTIAL, 7 HOLDS**, from 1 / 16 / 6, committed as
+>   `docs/phase-2-foundation/verdicts-2026-10-28.md` and measured against the tag
+>   `prd-verdicts-2026-10-28`. Twelve rows, each graded by a judge and then by an independent
+>   refuter briefed to overturn it; the refuter's verdict is the one of record.
+> - **Exactly one row moved, AC-13, and its fixes were in #249 rather than in the nine.**
+>   AC-7's judge graded it HOLDS and its refuter overturned that back to PARTIAL.
+> - **ALL NINE rows the triage repaired returned PARTIAL again, every one refuter-confirmed.**
+>   The bullet above is right that nine guards had no reachable failure state and right that
+>   it closed them. What a reader must not infer is that conformance improved. **Guard
+>   coverage and clause satisfaction are different things:** a judge grades the PRD clause,
+>   and most of these clauses are unmet in the IMPLEMENTATION, not merely unguarded. AC-1
+>   asks for "a typed validation error" while `lib/db/ingest.ts:170` discards the `ZodError`
+>   for the bare string `"invalid_event_shape"`. No test change closes that.
+> - **The comment-in-prose trap shipped twice.** AC-14's guard in `49ae7ce` went red when a
+>   refuter edited ONLY a comment in `lib/rules/evaluate.ts` to say it never calls `fetch()`,
+>   and it was simultaneously blind to `globalThis["fetch"]`. NFR-4's `continue-on-error`
+>   check in `d6ea05e` was a whole-file regex. A fifth instance was proposed and rejected
+>   after a refuter ran it. Catching an instance twice is not fixing the class, and patching
+>   the fourth regex individually is what produced the fifth.
+> - **The remedy is one helper**, `tests/helpers/source-scan.ts`, read by all four
+>   text-scanning guards. It tracks string AND REGEX literals, because
+>   `lib/bridges/heartbeat-config.ts:58` holds an escaped-slash regex inside the scanned
+>   directories and mistaking it for a comment would make those guards BLIND. Both shipped
+>   defects are measured old-guard-beside-new in the tenth stretch.
+> - **PR #250 is fifteen commits, all five gates green on `5f489b8`**: 132 files, 1451 passed
+>   plus 5 expected-fail, freeze check clean. Its title and body were rewritten, because the
+>   old body carried the "caught both times" claim.
+> - **AC-8 is FAILS for the DEPLOYED system, not PARTIAL.** 0023 is unapplied, so the
+>   `pg_temp` shadowing route on `memberships` is open live with CI green. Applying 0021 to
+>   0024 remains the one urgent owner action, and no gate in that repository can detect
+>   production migration drift at all, by design.
+
+>
+> **Update 2026-10-28 (later): PRODUCTION IS CAUGHT UP.** Read `HANDOVER.md` -> "Eleventh
+> stretch" before acting on anything above about migrations.
+>
+> - **Migrations 0016 to 0024 are APPLIED** to the live project, with the owner's explicit
+>   authorization. It went from 15 to 24. The AC-6 privacy leak and the AC-8 pg_temp
+>   shadowing hole are CLOSED LIVE, and because RLS is evaluated at READ time, 0024 covered
+>   rows that already existed.
+> - **CORRECTION to every earlier mention: it was NINE migrations, not four.** 0021 cannot be
+>   applied without 0016 to 0020. The four named were only the security-relevant ones.
+> - The deployed system was re-graded from the catalogues as
+>   `production-conformance-2026-10-28.md`. All four BROKEN LIVE rows are FIXED LIVE.
+> - **AC-7 moved to HOLDS; the tally is 1 FAILS / 14 PARTIAL / 8 HOLDS.** All three of its
+>   surfaces are pinned by test now, not by a judge's reading. It is NOT corroborated by an
+>   adversarial model pass and the record says so.
+> - **The method changed.** Judging and refuting with the same model is correlated error, so
+>   the confirmations were never corroboration; both documents are corrected. The part that
+>   worked was adversarial RE-MEASUREMENT, so it was rebuilt as tests: a shared
+>   comment-stripper, a rule that no guard may assert absence over raw source, a committed
+>   secret scan, an AC-7 server-action pin, and a pg_policy enumeration of every write
+>   surface. Writing the first found two LATENT instances of the defect five agent runs had
+>   been hunting one at a time.
+> - **AC-5 is the single FAILS**, with the measurement behind it: three loginable,
+>   password-bearing BYPASSRLS roles. Revoking is an outage, not a fix.
+> - Still the owner's: AC-1's typed error (a public HTTP code), AC-10's semantics,
+>   AGENT_TOKENS_JSON's boot behaviour, AC-5's architecture, NFR-6's production weakness (an
+>   APP deploy, not a migration), and merging byahad #250 and skills #36.
+
+> **Update 2026-10-28 (last): THE FULL PRD-LEVEL DRY-RUN IS DONE, and it had never been done
+> before.** Read `HANDOVER.md` -> "Twelfth stretch", then
+> `byahad:docs/phase-2-foundation/full-prd-dry-run-2026-10-28.md`. Nothing below moved; the
+> work was in byahad again.
+>
+> - **The goal's last step was missing, not disputed.** It asks for a whole-system dry-run
+>   once every fix is dry-run, and twenty rounds of per-fix dry-runs had never been followed
+>   by one. `scripts/local-gate.sh` on `fb85371`, tree frozen and verified frozen at both
+>   ends: audit 0, typecheck 0, lint 0 with the 23-warning baseline unchanged, test 0 with
+>   138 files and 1516 passed plus 5 expected-fail in 399s, build 0. ALL GATES GREEN.
+> - **THE SHARPEST FINDING OF THE WHOLE CAMPAIGN.** The repository's PRD-level check could
+>   have been satisfied by 23 comments and zero tests. `prd-conformance.e2e.test.ts` drives
+>   7 of 23 requirements and admits its rules "cannot notice that the world moved";
+>   `requirements-traceability.test.ts` admits a citation in a surviving header comment
+>   satisfies it, "so deleting every test BODY keeps it green". Three new rules now require a
+>   citation in a test NAME read from comment-stripped code, require every "elsewhere" reason
+>   to name a suite that itself cites that requirement, and refuse an empty or wholly skipped
+>   suite.
+> - **Six residuals closed, each mutation-proven.** AC-14 is the one worth knowing: the
+>   refutation had said a source scan "cannot establish a reachability property" and the
+>   answer shipped at the time was a WIDER REGEX. With a computed `globalThis["fet" + "ch"]`
+>   in the engine, the new runtime guard went 3 failed and the old source scan went 22
+>   passed, completely blind. Also NFR-7's Sentry per-send AbortController (the seam was
+>   `httpModule`, listed in the very sentence that had dismissed it), AC-4's realtime
+>   publication bound to its policies, AC-1's authorization refusal no longer reported as a
+>   schema failure, and NFR-1's no-`any` clause which nothing had covered.
+> - **AC-14 moved to HOLDS. Tally is 1 FAILS / 13 PARTIAL / 9 HOLDS.** Four other rows had
+>   residuals closed WITHOUT moving, because each remainder is an owner decision.
+> - **Two small repo items remain in byahad**, both named:
+>   `tests/db/tenant-isolation-evidence.test.ts` has NO positive control, so it would pass in
+>   full with every policy dropped, and NFR-1 gap (b), the shipped `.mjs` emitter and sidecar
+>   outside tsconfig and lint.
+> - **A retraction, recorded because the corrections are the useful part.** I reported that 11
+>   of 12 "elsewhere" reasons named a suite that never mentions its requirement. That was a
+>   path bug of mine; the real number is one. The repository's mapping was fine and I nearly
+>   filed a finding against it. Also: a behavioural test caught a defect in my OWN Sentry fix
+>   within minutes, which a source scan could never have seen, and I had to correct a rule the
+>   same day I wrote it because its assertion floor graded thoroughness instead of catching a
+>   gutted file.
+> - **One method rule worth carrying anywhere:** a mutation that reddens NOTHING is a claim
+>   about the guard, not a verdict on it, and must be checked before it is believed.
+> - Still the owner's, now seven and each recorded with its seam: AC-1's HTTP status and code,
+>   AC-10's semantics, AGENT_TOKENS_JSON's boot behaviour, AC-5's BYPASSRLS architecture,
+>   NFR-7's "AbortController" wording (needs the formal ratification NFR-4 and NFR-5 got),
+>   NFR-1's `.mjs` scope, NFR-6's production weakness (an APP deploy), and merging byahad #250
+>   and skills #36.
+>
+> **SESSION STOPPED 2026-10-28 08:53 UTC on the owner's instruction. Read this before acting.**
+>
+> - **Everything is committed and pushed.** byahad PR #250 at `6ab3205`, 36 commits. skills
+>   PR #36 at `417f51a`. Both working trees clean, zero unpushed commits in either.
+> - **skills CI is GREEN**: `Skill invariants` run 49 on `417f51a`, so all fifteen rules pass
+>   in CI as well as locally.
+> - **BYAHAD CI HAS NO VERDICT YET.** Run 485 was still in progress on `52da299` when work
+>   stopped. Run 484 was CANCELLED by the push that superseded it, which is
+>   `concurrency: cancel-in-progress` and NOT a failure. The last green run was 483 on
+>   `7de86ab`, three commits earlier. Check 485 first; if it is red, root-cause it from the
+>   job log rather than calling it a flake, because the local gate passed the same work.
+> - **No automated follow-up is armed.** The scheduled check-in was deleted and the PR
+>   subscription dropped, both on the stop instruction, so nothing will wake a session to act
+>   on a red CI run. That is deliberate and it means a human has to look.
+> - **A CodeQL finding on this round's own code** was fixed in `52da299`:
+>   `req.replace("-", "-")` inside the new PRD-level guard, a hyphen replaced with itself and
+>   written as if it were escaping. Behaviour was never wrong, so no test caught it and no
+>   test ever would have, because a no-op is invisible to a behavioural test. Dead code inside
+>   a guard built to catch guards that cannot fail, found by a scanner rather than by the
+>   suite.
+> - **Two small repo items remain in byahad**, both named and neither started:
+>   `tests/db/tenant-isolation-evidence.test.ts` has NO positive control, so it would pass in
+>   full with every policy dropped, and NFR-1 gap (b), the shipped `.mjs` emitter and sidecar
+>   outside tsconfig and lint.
+
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
 > 2. ~~Normalise the `Status:` field in `HANDOVER.md`~~ done, and now enforced.
