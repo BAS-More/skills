@@ -365,6 +365,13 @@
 >   `tests/db/tenant-isolation-evidence.test.ts` has NO positive control, so it would pass in
 >   full with every policy dropped, and NFR-1 gap (b), the shipped `.mjs` emitter and sidecar
 >   outside tsconfig and lint.
+>
+> **Update 2026-11-17: one personal skill added; nothing below moved.** At Avi's request,
+> `skills/personal/commit-and-push-to-gh/` sweeps the related Claude sessions and their
+> scratchpads for unsaved work, commits it after a secret scan, and pushes it to GitHub. It
+> ships with a read-only PowerShell inventory script, a 24-check self-test, and three
+> sandbox eval cases. Because it lives in `personal/`, it is in neither the plugin manifest
+> nor the top-level README. See `HANDOVER.md` -> "Session 2026-11-17".
 
 > What remains:
 > 1. The project-memory continuation sections at the end of this prompt. Untouched.
