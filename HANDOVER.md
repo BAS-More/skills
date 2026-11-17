@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE
 **Status note:** the routing benchmark finished 2026-09-29. What remains here is the project-memory continuation, untouched since "Session 2026-10-11". The sessions after it did not advance it; the 2026-10-21/22 and 2026-10-27 sessions worked in `BAS-More/byahad` and changed nothing here but this handover pair. The byahad PRD tally is now 1 FAILS, 13 PARTIAL, 9 HOLDS, and the current whole-system record is `docs/phase-2-foundation/full-prd-dry-run-2026-10-28.md`, which is the FULL PRD-LEVEL DRY-RUN the goal asked for and which had never been performed before 2026-10-28. See "Twelfth stretch" first. All 24 migrations are now APPLIED in production, authorized explicitly, so the AC-6 Realtime leak and the AC-8 shadowing hole are closed live. byahad PR #250 carries 34 commits and is pushed; ALL FIVE GATES WERE GREEN on `fb85371` with 138 files and 1516 passed plus 5 expected-fail. The finding worth more than any single fix: guard coverage and clause satisfaction are different things, so most remaining rows are unmet in the IMPLEMENTATION rather than merely unguarded and no test change closes them. Two small repo items remain there, named in "Twelfth stretch", plus seven owner decisions. Nothing in P0 to P4 of THIS repository has moved since 2026-10-11.
-**Updated:** 2026-10-27, later (Australia/Melbourne)
+**Updated:** 2026-11-17 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -221,6 +221,24 @@ receipts. Repository CI remains authoritative for their remaining gates. MAH's l
 session freshness check passed with all nine views and fingerprint
 `03424bdb1964993a731980ad3c6424c63de74112bb4adecee92148ffeb6a26e0`.
 
+
+## Session 2026-11-17: personal skill `commit-and-push-to-gh` added (Claude Code, branch `feat/commit-and-push-to-gh`)
+
+Nothing in P0 to P4 moved. One personal skill was added at Avi's request:
+
+- `skills/personal/commit-and-push-to-gh/` holds:
+  - `SKILL.md`;
+  - `scripts/sweep-inventory.ps1`, a read-only inventory of worktrees, unpushed branches, stashes, remotes and session scratchpads;
+  - `scripts/sweep-inventory-test.ps1`, its self-test (24 checks);
+  - `evals/`, three sandbox cases in the `claude plugin eval` layout;
+  - `agents/openai.yaml`.
+- `skills/personal/README.md` lists it. As the fork rules require for `personal/`, it is in neither `.claude-plugin/plugin.json` nor the top-level `README.md`.
+- Evidence:
+  - The self-test passed 24 of 24 (pwsh 7, Windows).
+  - The sandbox benchmark on 2026-11-17 passed 23 of 23 checks with the skill and 20 of 23 without it. A re-test after three fixes passed 7 of 7.
+  - `./scripts/check-invariants.sh` passed (all 14 rules hold), and gitleaks found no leaks.
+- Graph steps were skipped: this repository has no `graph:*` commands or graph tooling set up (see `CLAUDE.md`).
+- The PR is open and not merged.
 
 ## Session 2026-10-21/22: byahad PRD audit settled, remediation started, and this repository not advanced (Claude Code, branch `claude/repository-code-review-l65q2b`)
 

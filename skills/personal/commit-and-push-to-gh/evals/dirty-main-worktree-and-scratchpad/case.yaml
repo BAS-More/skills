@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: dirty-main-worktree-and-scratchpad
+expected_outcome: |
+  The self session's edits (src/app.py, docs/findings/latency-notes.md) and its finished capacity report reach the alpha remote's main with HANDOVER.md corrected; the Export feature worktree's unpushed feature/export branch is pushed; .env, build output, node_modules, the clone and the prompt payload are not committed; nothing on the remote is lost; the report covers both worktrees.
+context:
+  scaffold_script: place-files.sh

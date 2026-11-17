@@ -1,0 +1,3 @@
+interface:
+  display_name: "Commit and Push to GitHub"
+  short_description: "Sweep related sessions for unsaved work, commit it safely, push to GitHub"
