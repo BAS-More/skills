@@ -1,0 +1,18 @@
+{
+  "activeCodingClientsConfigured": 2,
+  "date": "2026-09-14",
+  "detailLocation": "The private owner record contains installed/default-branch verification, outstanding repository gates and graph readiness. This public file intentionally omits private repository names and individual outcomes.",
+  "eligibleRepositoryCount": 234,
+  "excludedArchivedCount": 7,
+  "excludedProtectedCount": 1,
+  "existingGraphSystemPreservedCount": 1,
+  "installerCI": "https://github.com/BAS-More/skills/actions/runs/34859254533",
+  "installerTestCount": 11,
+  "inventoryRepositoryCount": 242,
+  "policyInstallationIsGraphValidation": false,
+  "policyInstallationTargetCount": 233,
+  "reportType": "scope-summary",
+  "schemaVersion": 1,
+  "scope": "Owner-authorized project-memory policy installation",
+  "verifiedPolicyPullRequestCount": 233
+}
